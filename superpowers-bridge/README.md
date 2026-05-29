@@ -275,10 +275,11 @@ PLANNING ━━━━━━━━━━━━━━━━━━━━━━━�
                   │                                   ├─→ tasks.md ──→ plan.md
                   └─→ design.md (required) ───────────┘
                                                                        │
+                     plan.md triggers git worktree creation             │
                           apply.requires: [plan], apply.tracks: tasks  ▼
 APPLY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   0. Pre-flight skill check
-  1. superpowers:using-git-worktrees
+  1. Detect existing worktree (created at plan.md); create if missing
   2. superpowers:subagent-driven-development (+ TDD + code-review transitive)
   3. openspec-verify-change → verify.md ◄┐
                               │           │ blocking → fix
@@ -289,6 +290,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 ```
 
 > **Timing notes** (full rationale in "Six design touches" #6):
+> - `plan.md` triggers git worktree creation — the worktree is set up during planning so all artifacts (including untracked) are present when apply starts.
 > - `verify.md` declares `requires: plan` in the graph but is actually produced inside apply step 3.
 > - `retrospective.md` declares `requires: verify` and per Step 4 is produced **before** the PR opens — so the PR diff includes the complete archived cycle (all artifacts done, spec synced, change folder under `archive/`).
 > - The `requires:` edges are file-existence dependencies for OpenSpec's graph engine; runtime ordering lives in instruction prose.
@@ -299,7 +301,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 |---|---|---|---|
 | 1 | `superpowers:brainstorming` | `brainstorm` artifact instruction | Direct (with PRECHECK) |
 | 2 | `superpowers:writing-plans` | `plan` artifact instruction | Direct (with PRECHECK) |
-| 3 | `superpowers:using-git-worktrees` | apply step 1 | Direct |
+| 3 | `superpowers:using-git-worktrees` | plan.md artifact instruction (worktree created during planning) | Direct |
 | 4 | `superpowers:subagent-driven-development` | apply step 2 | Direct |
 | 5 | `superpowers:test-driven-development` | (activated inside #4) | **Transitive** |
 | 6 | `superpowers:requesting-code-review` | (activated inside #4) | **Transitive** |
@@ -371,10 +373,16 @@ Confirms these skills are installed before proceeding:
 Missing skill → STOP with explicit error. No silent fallback, no manual mode within this schema. The user should either install Superpowers or switch to the built-in `spec-driven` schema for that change.
 
 > The v0 version of this schema once placed an "auto-commit change artifacts to current branch" step here. It was removed after the [PR #970 review](https://github.com/Fission-AI/OpenSpec/pull/970): handling untracked change directories is the worktree skill's responsibility, not the schema's.
+>
+> The current version solves this by creating the worktree during the `plan.md` phase (when the last planning artifact is written). This ensures all artifacts — including untracked ones — are present in the worktree when apply begins. Apply step 1 now detects an existing worktree first and only creates one as a fallback.
 
 #### 1. Workspace — `superpowers:using-git-worktrees`
 
-Creates `.worktrees/<change-name>/`, switches to a new branch, runs setup, confirms a clean test baseline.
+Detects an existing worktree (created during the `plan.md` phase) via `git worktree list`. If found, switches into it and confirms a clean test baseline.
+
+If NOT found (e.g., the proposal was scaffolded without a worktree), invokes `superpowers:using-git-worktrees` to create one now.
+
+After entering the worktree, verifies that all planning artifacts (brainstorm.md, proposal.md, design.md, specs/, tasks.md, plan.md) are present. If any were lost because untracked files didn't carry over, copies them from the original change directory.
 
 #### 2. Executor — `superpowers:subagent-driven-development`
 
@@ -460,6 +468,8 @@ The LLM does not need to interpret timing prose — it runs commands and reads r
 ### 6. verify and retrospective are time-mismatched artifacts (known limitation)
 
 `verify.requires: [plan]` and `retrospective.requires: [verify]` are file-existence dependencies in the schema graph, but each instruction explicitly states "MUST run AFTER apply phase / verify pass". This is intentional misalignment — OpenSpec's engine only checks predecessor file existence. Engine-native fix awaits a `post_apply` phase concept upstream (analogous to spec-kit's `after_implement` hook); evidence-based PRECHECK above is the v1 mitigation.
+
+The worktree creation was moved from apply step 1 to the `plan.md` phase to solve an untracked-artifact gap: planning artifacts (brainstorm.md, proposal.md, etc.) are untracked until the first commit, and a worktree created during apply would not carry them over. By creating the worktree when `plan.md` is written, all artifacts live in the worktree from the start of apply.
 
 ---
 

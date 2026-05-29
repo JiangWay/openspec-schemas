@@ -190,6 +190,18 @@ artifacts:
       Pass the tasks.md content to the skill as the input for
       decomposition. The plan should reference the specs and
       design artifacts in this change directory.
+
+      After plan.md is written, create a git worktree for this
+      change so all planning artifacts (including untracked ones)
+      are present when apply begins:
+
+      Use the Skill tool to invoke
+      **superpowers:using-git-worktrees** to create an isolated
+      git worktree for this change. This ensures untracked
+      artifacts (brainstorm.md, proposal.md, design.md, specs/,
+      tasks.md, plan.md) are carried into the worktree before any
+      git commit — solving the gap where apply-created worktrees
+      would miss these files.
     requires:
       - tasks
 
@@ -489,9 +501,23 @@ apply:
        may have a fallback. Print the missing list once at apply
        start so the user isn't surprised mid-cycle.
 
-    1. **Workspace**: Use the Skill tool to invoke
-       **superpowers:using-git-worktrees** to create an isolated
-       git worktree for this change.
+    1. **Workspace**: The proposal phase should have created an
+       isolated git worktree for this change. Detect it first:
+
+       Run `git worktree list` and check for a worktree whose path
+       or branch name matches this change. If found, switch into it
+       and confirm a clean test baseline.
+
+       If NOT found (e.g., the proposal was scaffolded without a
+       worktree, or the worktree was cleaned up), use the Skill tool
+       to invoke **superpowers:using-git-worktrees** to create one
+       now.
+
+       Either way, verify that all planning artifacts (brainstorm.md,
+       proposal.md, design.md, specs/, tasks.md, plan.md) are present
+       in the worktree before proceeding to step 2. If any are missing
+       because untracked files were not carried over, copy them from
+       the original change directory.
 
     2. **Executor — subagent-driven-development**:
 
