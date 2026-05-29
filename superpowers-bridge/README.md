@@ -243,7 +243,7 @@ flowchart TD
     subgraph Apply ["⚙️ APPLY — 7 ordered steps (requires: plan, tracks: tasks.md)"]
         direction TB
         A0["<b>0. Pre-flight skill check</b>"]
-        A1["<b>1. Workspace</b><br/><i>using-git-worktrees</i>"]
+        A1["<b>1. Workspace</b><br/><i>worktree check (created by /bridge-new)</i>"]
         A2["<b>2. Executor</b><br/><i>subagent-driven-development</i><br/>↳ TDD + code-review (transitive)"]
         A3["<b>3. Verification</b><br/><i>openspec-verify-change</i> → verify.md"]
         A4["<b>4. Retrospective</b> → retrospective.md<br/>(BEFORE PR; hot context)"]
@@ -278,8 +278,8 @@ PLANNING ━━━━━━━━━━━━━━━━━━━━━━━�
                           apply.requires: [plan], apply.tracks: tasks  ▼
 APPLY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   0. Pre-flight skill check
-  1. superpowers:using-git-worktrees
-  2. superpowers:subagent-driven-development (+ TDD + code-review transitive)
+  1. Worktree check (created by `/bridge-new`; STOP if missing)
+  2. subagent-driven-development (+ TDD + code-review transitive)
   3. openspec-verify-change → verify.md ◄┐
                               │           │ blocking → fix
                               ▼           │
@@ -289,6 +289,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 ```
 
 > **Timing notes** (full rationale in "Six design touches" #6):
+> - `/bridge-new` creates the worktree before any artifact is written — the change directory and all artifacts land directly in the isolated branch with zero main-tree pollution.
 > - `verify.md` declares `requires: plan` in the graph but is actually produced inside apply step 3.
 > - `retrospective.md` declares `requires: verify` and per Step 4 is produced **before** the PR opens — so the PR diff includes the complete archived cycle (all artifacts done, spec synced, change folder under `archive/`).
 > - The `requires:` edges are file-existence dependencies for OpenSpec's graph engine; runtime ordering lives in instruction prose.
@@ -299,7 +300,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 |---|---|---|---|
 | 1 | `superpowers:brainstorming` | `brainstorm` artifact instruction | Direct (with PRECHECK) |
 | 2 | `superpowers:writing-plans` | `plan` artifact instruction | Direct (with PRECHECK) |
-| 3 | `superpowers:using-git-worktrees` | apply step 1 | Direct |
+| 3 | `superpowers:using-git-worktrees` | `bridge-new` skill (before any artifact) | Direct |
 | 4 | `superpowers:subagent-driven-development` | apply step 2 | Direct |
 | 5 | `superpowers:test-driven-development` | (activated inside #4) | **Transitive** |
 | 6 | `superpowers:requesting-code-review` | (activated inside #4) | **Transitive** |
@@ -324,16 +325,22 @@ Implemented purely via context injection at invocation time, not by modifying sk
 
 ### Quick flow (recommended)
 ```bash
-/opsx:ff my-feature    # one-shot: scaffold + brainstorm + proposal + design + specs + tasks + plan
-/opsx:apply            # worktree + subagent-driven-development (with TDD + code-review)
-/opsx:verify           # produces verify.md (7 checks)
-/opsx:continue         # → retrospective (produces retrospective.md, §0 + 6 sections)
-/opsx:archive          # archive
+/bridge-new my-feature  # scaffold change in isolated worktree (use this instead of /opsx:new)
+/opsx:continue          # → brainstorm (interactive dialogue)
+/opsx:continue          # → proposal
+/opsx:continue          # → design
+/opsx:continue          # → specs
+/opsx:continue          # → tasks
+/opsx:continue          # → plan
+/opsx:apply             # → implement in worktree
+/opsx:verify            # → verify.md
+/opsx:continue          # → retrospective
+/opsx:archive           # → archive
 ```
 
 ### Step-by-step flow
 ```bash
-/opsx:new my-feature --schema superpowers-bridge
+/bridge-new my-feature   # scaffold change in isolated worktree (use this instead of /opsx:new)
 /opsx:continue         # → brainstorm (interactive dialogue)
 /opsx:continue         # → proposal
 /opsx:continue         # → design (reorganize brainstorm into structured decisions)
@@ -370,11 +377,11 @@ Confirms these skills are installed before proceeding:
 
 Missing skill → STOP with explicit error. No silent fallback, no manual mode within this schema. The user should either install Superpowers or switch to the built-in `spec-driven` schema for that change.
 
-> The v0 version of this schema once placed an "auto-commit change artifacts to current branch" step here. It was removed after the [PR #970 review](https://github.com/Fission-AI/OpenSpec/pull/970): handling untracked change directories is the worktree skill's responsibility, not the schema's.
+> The v0 version of this schema once placed an "auto-commit change artifacts to current branch" step here. It was removed after the [PR #970 review](https://github.com/Fission-AI/OpenSpec/pull/970): the current version ships a bundled `bridge-new` skill that creates the worktree **before** `openspec new change` runs — the change directory and all artifacts land directly in the isolated branch, with zero main-tree pollution.
 
-#### 1. Workspace — `superpowers:using-git-worktrees`
+#### 1. Workspace — worktree check
 
-Creates `.worktrees/<change-name>/`, switches to a new branch, runs setup, confirms a clean test baseline.
+Confirms the worktree created by `/bridge-new` still exists via `git worktree list`. If found, switches into it. If NOT found, STOP and tell the user to run `/bridge-new <change-name>` first.
 
 #### 2. Executor — `superpowers:subagent-driven-development`
 
@@ -416,7 +423,7 @@ Confirms tests are green, presents merge / PR / keep-branch / discard options, c
 | Scenario | Command |
 |---|---|
 | First clone of a project | `bash scripts/install-git-hooks.sh` |
-| New change (interactive) | `/opsx:new <name> --schema superpowers-bridge` then `/opsx:continue` |
+| New change (interactive) | `/bridge-new <name>` then `/opsx:continue` |
 | New change (one-shot) | `/opsx:ff <name>` |
 | Resume an interrupted change | `/opsx:continue <name>` |
 | Enter implementation | `/opsx:apply <name>` |
@@ -460,6 +467,8 @@ The LLM does not need to interpret timing prose — it runs commands and reads r
 ### 6. verify and retrospective are time-mismatched artifacts (known limitation)
 
 `verify.requires: [plan]` and `retrospective.requires: [verify]` are file-existence dependencies in the schema graph, but each instruction explicitly states "MUST run AFTER apply phase / verify pass". This is intentional misalignment — OpenSpec's engine only checks predecessor file existence. Engine-native fix awaits a `post_apply` phase concept upstream (analogous to spec-kit's `after_implement` hook); evidence-based PRECHECK above is the v1 mitigation.
+
+The worktree is now created by the bundled `/bridge-new` skill **before** any artifact is written. This is the earliest point the schema can control — `openspec new change` runs inside the worktree, so the change directory and all subsequent artifacts land directly in the isolated branch. Main-tree pollution is zero. This required shipping a skill because OpenSpec schemas have no `before_create` hook at the CLI level.
 
 ---
 
@@ -523,6 +532,14 @@ Brainstorming is multi-turn interactive dialogue requiring user participation. M
 - `plan.md` → guides subagents step by step (the executor's input)
 
 Apply requires `plan` (not `tasks`) because the executor needs micro-steps; `tracks: tasks.md` ensures progress is still surfaced via the coarse checkboxes.
+
+### Why `/bridge-new` is a bundled skill
+
+OpenSpec's schema mechanism has no `before_create` hook — the earliest execution point is `artifact.instruction` (first run at `/opsx:continue`). By that point, `/opsx:new` has already written `openspec/changes/<name>/.openspec.yaml` on the main working tree.
+
+Shipping a skill lets us invert the order: create the worktree first, then run `openspec new change` inside it. This is the only way to achieve zero main-tree pollution without upstream changes to OpenSpec CLI.
+
+The skill lives in `templates/skills/` so adopters can install it alongside the schema. It is intentionally short-lived — if OpenSpec ever adds a schema-level `before_create` hook, the skill can be retired and the logic folded into schema.yaml.
 
 ### Fallback strategy
 
