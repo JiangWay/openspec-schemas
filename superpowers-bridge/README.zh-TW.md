@@ -278,8 +278,8 @@ PLANNING ━━━━━━━━━━━━━━━━━━━━━━━�
                           apply.requires: [plan], apply.tracks: tasks  ▼
 APPLY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   0. Pre-flight skill check
-  1. superpowers:using-git-worktrees
-  2. superpowers:subagent-driven-development(+ TDD + code-review 傳遞)
+  1. Worktree check(由 `/bridge-new` 建立;若不存在就 STOP)
+  2. subagent-driven-development(+ TDD + code-review 傳遞)
   3. openspec-verify-change → verify.md ◄┐
                               │           │ blocking → 回去修
                               ▼           │
@@ -289,6 +289,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 ```
 
 > **時序註記**(完整理由見下方「設計觸點 #6」):
+> - `/bridge-new` 在任何 artifact 寫入前先建立 worktree —— change 目錄和所有 artifact 直接落在隔離 branch,主工作樹零污染。
 > - `verify.md` 在 graph 上宣告 `requires: plan`,但實際產在 apply step 3 內。
 > - `retrospective.md` 宣告 `requires: verify`,並依 Step 4 在 PR 開啟**之前**產出 —— PR diff 才會包含完整 archived cycle(所有 artifact 完成、spec 已 sync、change folder 在 `archive/`)。
 > - `requires:` 邊是給 OpenSpec graph 引擎用的「檔案存在」依賴;runtime 順序由 instruction prose 控制。
@@ -299,7 +300,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 |---|---|---|---|
 | 1 | `superpowers:brainstorming` | `brainstorm` artifact instruction | 直接(含 PRECHECK) |
 | 2 | `superpowers:writing-plans` | `plan` artifact instruction | 直接(含 PRECHECK) |
-| 3 | `superpowers:using-git-worktrees` | apply step 1 | 直接 |
+| 3 | `superpowers:using-git-worktrees` | `bridge-new` skill(在任何 artifact 之前) | 直接 |
 | 4 | `superpowers:subagent-driven-development` | apply step 2 | 直接 |
 | 5 | `superpowers:test-driven-development` | (#4 內部觸發) | **傳遞** |
 | 6 | `superpowers:requesting-code-review` | (#4 內部觸發) | **傳遞** |
@@ -324,16 +325,22 @@ Superpowers skill 有預設輸出路徑(例如 brainstorming 寫到 `docs/superp
 
 ### 快速流程(推薦)
 ```bash
-/opsx:ff my-feature    # 一條龍:scaffold + brainstorm + proposal + design + specs + tasks + plan
-/opsx:apply            # worktree + subagent-driven-development(含 TDD + code-review)
-/opsx:verify           # 產出 verify.md(7 項檢查)
-/opsx:continue         # → retrospective(產出 retrospective.md,§0 + 6 sections)
-/opsx:archive          # 封存
+/bridge-new my-feature  # 在隔離 worktree 中 scaffold change(用這個取代 /opsx:new)
+/opsx:continue          # → brainstorm(互動式對話)
+/opsx:continue          # → proposal
+/opsx:continue          # → design
+/opsx:continue          # → specs
+/opsx:continue          # → tasks
+/opsx:continue          # → plan
+/opsx:apply             # → 在 worktree 中實作
+/opsx:verify            # → verify.md
+/opsx:continue          # → retrospective
+/opsx:archive           # → 封存
 ```
 
 ### 逐步流程
 ```bash
-/opsx:new my-feature --schema superpowers-bridge
+/bridge-new my-feature   # 在隔離 worktree 中 scaffold change(用這個取代 /opsx:new)
 /opsx:continue         # → brainstorm(互動式對話)
 /opsx:continue         # → proposal
 /opsx:continue         # → design(將 brainstorm 重組為結構化決策)
@@ -370,11 +377,11 @@ Superpowers skill 有預設輸出路徑(例如 brainstorming 寫到 `docs/superp
 
 skill 缺失 → STOP 並通知使用者,不靜默 fallback,本 schema 內也沒有 manual mode。建議使用者在那個 change 改用 OpenSpec 內建的 `spec-driven` schema,或安裝缺失的 skill 後重來。
 
-> 本 schema 的 v0 版本曾在這裡放「自動 commit change artifacts 到當前分支」邏輯,在 [PR #970 review](https://github.com/Fission-AI/OpenSpec/pull/970) 後移除:處理未追蹤的 change 目錄是 worktree skill 的責任,schema 不該主動改寫使用者的 git history。
+> 本 schema 的 v0 版本曾在這裡放「自動 commit change artifacts 到當前分支」邏輯,在 [PR #970 review](https://github.com/Fission-AI/OpenSpec/pull/970) 後移除。目前版本附帶 bundled `bridge-new` skill,在 `openspec new change` 執行**之前**先建立 worktree —— change 目錄和所有 artifact 直接落在隔離 branch,主工作樹零污染。
 
-#### 1. Workspace — `superpowers:using-git-worktrees`
+#### 1. Workspace — worktree check
 
-建立 `.worktrees/<change-name>/`、切到新 branch、跑專案 setup、確認 test baseline 乾淨。
+確認由 `/bridge-new` 建立的 worktree 仍存在(透過 `git worktree list`)。若存在就切換過去。若不存在,STOP 並通知使用者先跑 `/bridge-new <change-name>`。
 
 #### 2. Executor — `superpowers:subagent-driven-development`
 
@@ -416,7 +423,7 @@ Evidence-first 反思:§0 Evidence(量化前置數據 —— commit 數、diff �
 | 情境 | 指令 |
 |---|---|
 | 首次 clone 專案後 | `bash scripts/install-git-hooks.sh` |
-| 新 change(互動式) | `/opsx:new <name> --schema superpowers-bridge` 接著多次 `/opsx:continue` |
+| 新 change(互動式) | `/bridge-new <name>` 接著多次 `/opsx:continue` |
 | 新 change(一鍵) | `/opsx:ff <name>` |
 | 恢復中斷的 change | `/opsx:continue <name>` |
 | 進入實作 | `/opsx:apply <name>` |
@@ -460,6 +467,8 @@ LLM 不必解讀 timing 文字 —— 跑指令、看結果即可。這是顧慮
 ### 6. verify 與 retrospective 是時序錯位的 artifact(已知限制)
 
 `verify.requires: [plan]` 與 `retrospective.requires: [verify]` 在 schema graph 上是「檔案存在」依賴,但兩者的 instruction 都明寫「MUST run AFTER apply phase / verify pass」。這是刻意錯位 —— OpenSpec 引擎只看前置 artifact 檔案存在,不會檢查 apply 是否真的跑完、verify 是否真的 pass。引擎原生的修法等 OpenSpec 引入 `post_apply` phase(對應 spec-kit 的 `after_implement` hook);上述第 5 點 evidence-based PRECHECK 是 v1 的緩解。
+
+Worktree 現由 bundled `/bridge-new` skill 在任何 artifact 寫入**之前**建立。這是本 schema 能控制的最早時間點 —— `openspec new change` 在 worktree 內執行,change 目錄和所有後續 artifact 直接落在隔離 branch。主工作樹零污染。這需要附帶一個 skill,因為 OpenSpec schema 沒有 `before_create` hook。
 
 ---
 
@@ -523,6 +532,14 @@ Brainstorming 是多輪互動對話,需要使用者參與。把它做為第一�
 - `plan.md` → 指導 subagent 逐步實作(executor 的輸入)
 
 apply 要求 `plan` 而非 `tasks`,因為 executor 需要 micro-step 才能有效工作;`tracks: tasks.md` 確保進度仍由粗粒度 checkbox 追蹤。
+
+### 為什麼 `/bridge-new` 是 bundled skill
+
+OpenSpec 的 schema 機制沒有 `before_create` hook —— 最早的執行點是 `artifact.instruction`(在 `/opsx:continue` 首次觸發)。那時 `/opsx:new` 已經在主工作樹上寫了 `openspec/changes/<name>/.openspec.yaml`。
+
+附帶一個 skill 讓我們可以反轉順序:先建 worktree,再在裡面跑 `openspec new change`。這是在不修改 OpenSpec CLI 的前提下達成主工作樹零污染的唯一方法。
+
+Skill 放在 `templates/skills/` 讓採用者可隨 schema 一起安裝。這是刻意短命的設計 —— 若 OpenSpec 未來加入 schema-level `before_create` hook,skill 就可退役,邏輯可以摺回 schema.yaml。
 
 ### 降級策略
 

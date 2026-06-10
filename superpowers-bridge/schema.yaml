@@ -18,6 +18,9 @@ description: >
   and plan for implementation guidance).
   Apply phase uses git worktrees + subagent-driven-development
   (brings TDD and code-review transitively).
+      Use `/bridge-new <name>` (bundled skill) instead of `/opsx:new`
+      to scaffold the change directly in an isolated worktree — prevents
+      untracked artifact pollution on the main working tree.
 
 artifacts:
   - id: brainstorm
@@ -25,6 +28,12 @@ artifacts:
     description: Collaborative design exploration using Superpowers brainstorming
     template: brainstorm.md
     instruction: |
+      0. **Workspace — worktree check**:
+         Run `git worktree list` and check for a worktree whose path
+         or branch name matches this change. If found, switch into it
+         before proceeding. If NOT found, STOP and tell the user to
+         run `/bridge-new <change-name>` first.
+
       PRECHECK — required skill availability:
       Before invoking, confirm `superpowers:brainstorming` appears in
       your available skills list. If missing, STOP and inform the user
@@ -61,6 +70,12 @@ artifacts:
     description: Initial proposal document outlining the change
     template: proposal.md
     instruction: |
+      0. **Workspace — worktree check**:
+         Run `git worktree list` and check for a worktree whose path
+         or branch name matches this change. If found, switch into it
+         before proceeding. If NOT found, STOP and tell the user to
+         run `/bridge-new <change-name>` first.
+
       Create the proposal document based on the brainstorming output.
 
       Read brainstorm.md for the validated design. Extract:
@@ -86,6 +101,12 @@ artifacts:
     description: Technical design document with implementation details
     template: design.md
     instruction: |
+      0. **Workspace — worktree check**:
+         Run `git worktree list` and check for a worktree whose path
+         or branch name matches this change. If found, switch into it
+         before proceeding. If NOT found, STOP and tell the user to
+         run `/bridge-new <change-name>` first.
+
       Create the design document explaining HOW to implement the change.
 
       Read brainstorm.md as input. brainstorm.md is a raw capture of
@@ -118,6 +139,12 @@ artifacts:
     description: Detailed specifications for the change
     template: spec.md
     instruction: |
+      0. **Workspace — worktree check**:
+         Run `git worktree list` and check for a worktree whose path
+         or branch name matches this change. If found, switch into it
+         before proceeding. If NOT found, STOP and tell the user to
+         run `/bridge-new <change-name>` first.
+
       Create specification files that define WHAT the system should do.
 
       Create one spec file per capability listed in the proposal's Capabilities section.
@@ -146,6 +173,12 @@ artifacts:
     description: Implementation checklist with trackable tasks
     template: tasks.md
     instruction: |
+      0. **Workspace — worktree check**:
+         Run `git worktree list` and check for a worktree whose path
+         or branch name matches this change. If found, switch into it
+         before proceeding. If NOT found, STOP and tell the user to
+         run `/bridge-new <change-name>` first.
+
       Create the task list that breaks down the implementation work.
 
       **IMPORTANT: Follow the template below exactly.** The apply phase parses
@@ -168,6 +201,12 @@ artifacts:
     description: Micro-task implementation plan using Superpowers writing-plans
     template: plan.md
     instruction: |
+      0. **Workspace — worktree check**:
+         Run `git worktree list` and check for a worktree whose path
+         or branch name matches this change. If found, switch into it
+         before proceeding. If NOT found, STOP and tell the user to
+         run `/bridge-new <change-name>` first.
+
       PRECHECK — required skill availability:
       Before invoking, confirm `superpowers:writing-plans` appears in
       your available skills list. If missing, STOP and inform the user
@@ -489,9 +528,11 @@ apply:
        may have a fallback. Print the missing list once at apply
        start so the user isn't surprised mid-cycle.
 
-    1. **Workspace**: Use the Skill tool to invoke
-       **superpowers:using-git-worktrees** to create an isolated
-       git worktree for this change.
+    1. **Workspace — worktree check**:
+       Run `git worktree list` and check for a worktree whose path
+       or branch name matches this change. If found, switch into it
+       and confirm a clean test baseline. If NOT found, STOP and
+       tell the user to run `/bridge-new <change-name>` first.
 
     2. **Executor — subagent-driven-development**:
 
