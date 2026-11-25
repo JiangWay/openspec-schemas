@@ -10,21 +10,23 @@
 
 | 你看到的觸發 | 應該怎麼做 |
 |---|---|
-| 使用者以 narrative 開「設計討論 / 腦力激盪」 | 先 verbal `superpowers:brainstorming`,**不**寫到 `docs/superpowers/specs/`;對話收斂後依下方 5 條判準升級到 `/opsx:propose` |
-| 使用者直接呼叫 `/opsx:new` / `/opsx:ff` / `/opsx:propose` | 走 schema 既定流程;artifact instruction 會在每步注入 |
+| 使用者以 narrative 開「設計討論 / 腦力激盪」 | 先 verbal `superpowers:brainstorming`,**不**寫到 `docs/superpowers/specs/`;對話收斂後依下方 5 條判準升級到 `/openspec-propose` |
+| 使用者直接呼叫 `/openspec-new-change` / `/openspec-ff-change` / `/openspec-propose` | 走 schema 既定流程;artifact instruction 會在每步注入 |
 | 使用者明確說 bug fix / typo / config 微調 / 文件更新 | 直接 PR,**不**建 change(見下方 skip 規則) |
-| 已經在某個 change 中 | `/opsx:continue` 或 `/opsx:apply` / `/opsx:verify` / `/opsx:archive` 推進 |
+| 已經在某個 change 中 | `/openspec-continue-change`、`/openspec-apply-change`、`/openspec-verify-change` 或 `/openspec-archive-change` 推進 |
 
-### 何時**不**走 opsx(直接 PR)
+### 何時不開 OpenSpec change(直接 PR)
 
 | 情境 | 直接 PR? |
 |---|---|
-| 新功能 / 新 capability / 架構變更 / breaking change | ❌ 要走 opsx |
+| 新功能 / 新 capability / 架構變更 / breaking change | ❌ 要開 OpenSpec change |
 | Bug fix(不變更合約)/ 測試補寫 / linter 規則 / 非破壞性升級 / typo / 文件 / config 值微調 | ✅ 直接 PR |
 
-原則:**流程儀式跟風險成正比**。動到對外合約 / schema / 跨系統介接 / 合規邊界 → opsx;其他 → 直接 PR。
+原則:**流程儀式跟風險成正比**。動到對外合約 / schema / 跨系統介接 / 合規邊界 → 開 OpenSpec change;其他 → 直接 PR。
 
-### Verbal brainstorm 升級到 opsx 的 5 條判準
+OpenSpec 2.0 移除了 `/opsx:*` slash command。上面的名稱是 workflow skill。
+
+### Verbal brainstorm 升級到 OpenSpec change 的 5 條判準
 
 5 條**全滿足**才升級(任一缺則繼續 brainstorm,不寫到 `docs/superpowers/specs/`):
 
@@ -34,13 +36,13 @@
 4. **驗收條件可陳述** —— 具體 pass 條件(例:`./mvnw clean verify` 通過 + N 個成果)
 5. **對話進入收斂** —— 最近幾輪在 confirm 不在發散
 
-全滿足 → 主動建議使用者「要不要 `/opsx:propose`?」,使用者 ack 後落地。永遠不要自動觸發。
+全滿足 → 主動建議使用者「要不要 `/openspec-propose`?」,使用者 ack 後落地。永遠不要自動觸發。
 
 ### Front-door 反模式(別做)
 
 - 讓 brainstorming 寫到 `docs/superpowers/specs/`
 - 讓 writing-plans 寫到 `docs/superpowers/plans/`
-- TBD 沒收斂就升級到 opsx
+- TBD 沒收斂就升級到 OpenSpec change
 - 對 bug fix / typo 也建 change
 
 詳細見 [superpowers-bridge README §進入與離開的判斷](https://github.com/JiangWay/openspec-schemas/blob/main/superpowers-bridge/README.zh-TW.md#進入與離開的判斷entry--exit-gates)。
