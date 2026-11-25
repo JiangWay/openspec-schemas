@@ -452,7 +452,7 @@ TDD 與 code-review 平常藏在 `subagent-driven-development` 的 SKILL.md 裡�
 
 時序敏感的 artifact 在 instruction 開頭跑具體 shell 證據檢查:
 
-- **verify**:`git log <base>..HEAD | wc -l > 0` 且 `grep -c '^- \[x\]' tasks.md > 0`
+- **verify**:`git rev-list --count <base>..HEAD > 0` 且 `grep -c '^- \[x\]' tasks.md > 0`。`<base>` 是 HEAD 與 `origin/HEAD`、`origin/main`、`origin/master`、`main`、`master` 中第一個存在的 ref 的 merge-base,所以沒有 remote 的全新 repo 會退回本地預設分支;若都不存在,agent 會詢問使用者 base branch,而不是把結果當成 0
 - **retrospective**:`test -f verify.md` 且 `! grep -q '^- \[x\] ❌ FAIL' verify.md`
 
 LLM 不必解讀 timing 文字 —— 跑指令、看結果即可。這是顧慮 #1 第 2 層,以及顧慮 #2 的緩解。

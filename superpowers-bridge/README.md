@@ -452,7 +452,7 @@ This schema requires a subagent-capable platform (Claude Code, Codex, etc.). The
 
 Each timing-sensitive artifact runs concrete shell evidence checks at the start of its instruction:
 
-- **verify**: `git log <base>..HEAD | wc -l > 0` AND `grep -c '^- \[x\]' tasks.md > 0`
+- **verify**: `git rev-list --count <base>..HEAD > 0` AND `grep -c '^- \[x\]' tasks.md > 0`. `<base>` is the merge-base with the first existing ref among `origin/HEAD`, `origin/main`, `origin/master`, `main`, `master`, so fresh repositories without a remote fall back to the local default branch; if none exists, the agent asks the user for the base branch instead of treating the result as 0.
 - **retrospective**: `test -f verify.md` AND `! grep -q '^- \[x\] ❌ FAIL' verify.md`
 
 The LLM does not need to interpret timing prose — it runs commands and reads results. This is layer 2 of concern #1 / mitigation for concern #2.

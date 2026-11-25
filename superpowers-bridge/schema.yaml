@@ -204,7 +204,16 @@ artifacts:
       yet produced reviewable changes.
 
       1. Commit evidence (must return > 0):
-         git log --oneline $(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD origin/master 2>/dev/null)..HEAD | wc -l
+         BASE_REF=$(for ref in origin/HEAD origin/main origin/master main master; do git rev-parse --verify --quiet "$ref^{commit}" >/dev/null && { echo "$ref"; break; }; done); echo "base: ${BASE_REF:-<none>}"; [ -n "$BASE_REF" ] && git rev-list --count "$(git merge-base HEAD "$BASE_REF")..HEAD"
+
+         The base ref is the first of origin/HEAD, origin/main,
+         origin/master, main, master that exists, so repositories
+         without a remote (fresh `git init`) fall back to the local
+         default branch. If it prints `base: <none>`, do NOT treat
+         that as 0 and do NOT skip the check: ask the user which
+         branch the change worktree was created from, then run
+         git rev-list --count "$(git merge-base HEAD <that-branch>)..HEAD"
+         Remember the resolved base ref; retrospective reuses it.
 
       2. Task progress (must return > 0):
          grep -c '^- \[x\]' openspec/changes/<change-name>/tasks.md
@@ -334,7 +343,10 @@ artifacts:
       1. **Gather evidence**
          - Run `git log --oneline <base>..HEAD` in the change worktree
            (or main checkout if the worktree was already merged) to
-           get the commit range
+           get the commit range. `<base>` is the merge-base with the
+           same base ref resolved in the verify PRECHECK (first
+           existing of origin/HEAD, origin/main, origin/master, main,
+           master; ask the user if none exists)
          - Read brainstorm.md, plan.md, tasks.md in this change
            directory for plan-vs-actual comparison
          - If verify.md contains failing items, address them BEFORE
