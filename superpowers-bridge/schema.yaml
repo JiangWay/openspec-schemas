@@ -24,6 +24,12 @@ description: >
   the controller to load that skill on each implementer dispatch.
   The final whole-branch review uses requesting-code-review's reviewer
   template. Per-task review is SDD's own task reviewer.
+  OpenSpec 2.2 adds an /openspec router skill. It complements the
+  /openspec-* workflow skills and does not replace them. It does not
+  select this schema: a change uses superpowers-bridge only when it
+  is created with --schema superpowers-bridge or that is the project
+  default in openspec/config.yaml. The router then hands the request
+  to a built-in skill, and that skill reads these instructions.
 
 artifacts:
   - id: brainstorm
@@ -260,6 +266,10 @@ artifacts:
       results in verify.md using the template, and still run the
       numbered checks below. If the skill is unavailable, run those
       checks manually and record them in verify.md.
+
+      OpenSpec 2.2's /openspec router can dispatch this skill by
+      itself ("verify <name>"). That path still does not write
+      verify.md. This artifact's instruction is what writes it.
 
       IMPORTANT timing note:
       - Unlike other artifacts, verify.md is produced AFTER the apply

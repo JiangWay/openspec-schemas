@@ -4,7 +4,7 @@
 
 [![Schema Structure](https://github.com/JiangWay/openspec-schemas/actions/workflows/validate-schemas.yml/badge.svg?branch=main)](https://github.com/JiangWay/openspec-schemas/actions/workflows/validate-schemas.yml)
 [![Upstream Drift](https://img.shields.io/github/issues-search/JiangWay/openspec-schemas?query=is%3Aopen%20label%3Aupstream-version-check&label=Upstream%20Drift&color=yellow)](https://github.com/JiangWay/openspec-schemas/issues?q=is%3Aopen+label%3Aupstream-version-check)
-[![OpenSpec baseline](https://img.shields.io/badge/OpenSpec_baseline-2.1.1-0277bd)](#compatibility)
+[![OpenSpec baseline](https://img.shields.io/badge/OpenSpec_baseline-2.2.0-0277bd)](#compatibility)
 [![Superpowers baseline](https://img.shields.io/badge/Superpowers_baseline-v7.0.2-0277bd)](#compatibility)
 
 > Bridges [OpenSpec](https://github.com/Fission-AI/OpenSpec)'s artifact governance (the **what**) with [obra/superpowers](https://github.com/obra/superpowers) execution skills (the **how**) into a single workflow. Adds an evidence-first `retrospective` artifact filling a gap Superpowers does not natively cover.
@@ -139,7 +139,7 @@ A custom schema uses OpenSpec's **native project-level schema mechanism**: the C
 
 ## Entry & exit gates
 
-This schema's instructions only fire when an OpenSpec workflow skill runs `openspec instructions` (`/openspec-new-change`, `/openspec-continue-change`, and the rest). OpenSpec 2.0 removed the `/opsx:*` slash commands. If you trigger Superpowers skills via narrative — for example, by saying "let's discuss the architecture" — the default behavior bypasses the schema. Brainstorming will still write to `docs/superpowers/specs/`, defeating the integration's redirection.
+This schema's instructions only fire when an OpenSpec workflow skill runs `openspec instructions` (`/openspec-new-change`, `/openspec-continue-change`, and the rest). OpenSpec 2.0 removed the `/opsx:*` slash commands. OpenSpec 2.2 adds `/openspec`, a router that picks one of those skills; it does not select this schema by itself (see Usage). If you trigger Superpowers skills via narrative — for example, by saying "let's discuss the architecture" — the default behavior bypasses the schema. Brainstorming will still write to `docs/superpowers/specs/`, defeating the integration's redirection.
 
 This section covers three things:
 
@@ -305,7 +305,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 | 6 | `superpowers:requesting-code-review` | apply step 2, final whole-branch review | Direct (per-task review is SDD's own prompt) |
 | 7 | `superpowers:finishing-a-development-branch` | apply step 6 | Direct |
 
-Plus one OpenSpec built-in: `openspec-verify-change` (apply step 3, produces `verify.md`).
+Plus one OpenSpec built-in: `openspec-verify-change` (apply step 3). The schema instruction writes `verify.md`; the skill's own report does not.
 
 > **No `executing-plans` executor.** This schema requires a subagent-capable platform (Claude Code, Codex, etc.) and selects `subagent-driven-development`. `superpowers:executing-plans` at v7.0.2 does load TDD and a final code review (that was not true at v5.1.0). It still runs every task in one context and reviews only at the end. This schema does not select it. If your platform lacks subagent support, use the built-in `spec-driven` schema instead.
 
@@ -323,6 +323,21 @@ Implemented purely via context injection at invocation time, not by modifying sk
 ## Usage
 
 OpenSpec 2.0 removed the `/opsx:*` slash commands. The names below are workflow skills. In Codex the prefix is `$` instead of `/`.
+
+### `/openspec` router (OpenSpec 2.2)
+
+`/openspec` is a starting-point skill. It does not replace `/openspec-propose`, `/openspec-new-change`, `/openspec-ff-change`, `/openspec-continue-change`, `/openspec-apply-change`, `/openspec-verify-change`, or `/openspec-archive-change`. It reads the request and hands it to one of those skills (or to explore, update, sync, bulk-archive, or onboard). Several steps run one skill at a time. If a skill says to stop for the user, the router stops there.
+
+The router has no schema argument. The skill it calls uses the project default schema unless the request names one. To run this bridge:
+
+- Set `schema: superpowers-bridge` in `openspec/config.yaml`, or
+- Name it in the request, for example `/openspec new change my-feature --schema superpowers-bridge`.
+
+A bare `/openspec add a feature` on a `spec-driven` project never enters this schema, so brainstorm, plan, and retrospective are skipped.
+
+Once the change uses this schema, the dispatched skill follows `openspec instructions`. That is what injects the Superpowers PRECHECKs and the output redirection. `openspec-propose` and `openspec-ff-change` still stop at the artifacts apply needs (through `plan`). They do not write `verify.md` or `retrospective.md`.
+
+`/openspec verify <name>` runs the built-in `openspec-verify-change` skill. That skill writes its own Completeness / Correctness / Coherence report. It does not write this schema's `verify.md`. Produce `verify.md` by continuing the change after apply, so `openspec instructions verify` runs.
 
 ### Quick flow (recommended)
 ```bash
@@ -394,7 +409,7 @@ This schema does not select `superpowers:executing-plans`. See design touch #4 b
 
 #### 3. Verification — `openspec-verify-change`
 
-Produces `verify.md` from 7 checks: structural validation (`openspec validate --all --json`), task completion, delta-spec sync state, design/specs coherence (non-blocking warning), implementation signal (committed code), front-door routing leak detector (non-blocking warning), and deferred-dogfood vs automated-test equivalence. The last check blocks only when `plan.md` has `[~]` deferrals but the equivalence section is empty (gap analysis skipped); otherwise it is informational.
+The verify artifact instruction writes `verify.md` from 7 checks: structural validation (`openspec validate --all --json`), task completion, delta-spec sync state, design/specs coherence (non-blocking warning), implementation signal (committed code), front-door routing leak detector (non-blocking warning), and deferred-dogfood vs automated-test equivalence. The last check blocks only when `plan.md` has `[~]` deferrals but the equivalence section is empty (gap analysis skipped); otherwise it is informational. The built-in `openspec-verify-change` report does not replace that file. `/openspec verify` (the 2.2 router) runs that skill and stops at its report; `verify.md` is written when this artifact's instruction runs.
 
 Failures route back to the corresponding artifact for fix; verify can be re-run.
 
@@ -420,6 +435,7 @@ Confirms tests are green, then presents three options: merge back to the base br
 
 | Scenario | Command |
 |---|---|
+| Skill not named (OpenSpec 2.2 router) | `/openspec <request>`. Name `superpowers-bridge`, or set it as the project default. Otherwise the change uses `spec-driven`. |
 | First clone of a project | `bash scripts/install-git-hooks.sh` |
 | New change (interactive) | `/openspec-new-change <name> --schema superpowers-bridge` then `/openspec-continue-change` |
 | New change (one-shot) | `/openspec-ff-change <name>` |
@@ -489,7 +505,7 @@ Current bundle release: **`1.0.0`** (git tag `v1.0.0`; see [VERSION](./VERSION))
 
 | superpowers-bridge | OpenSpec CLI | Superpowers plugin | Baseline as of |
 |---|---|---|---|
-| v1 | `2.1.1` | `v7.0.2` | 2026-11-25 |
+| v1 | `2.2.0` | `v7.0.2` | 2026-11-26 |
 
 ### How this is checked
 
@@ -501,11 +517,11 @@ The contract is three layers — **baseline declaration + automated drift detect
 | Drift notification | [`version-check.yml`](../.github/workflows/version-check.yml) weekly, compares baseline above against latest npm / GitHub release | Pinned ≠ latest upstream | Opens / updates a [labelled drift issue](https://github.com/JiangWay/openspec-schemas/issues?q=is%3Aopen+label%3Aupstream-version-check) for human review (workflow stays green — drift is normal, not a failure) |
 | End-to-end workflow | **Not automated** | Behavioral changes inside Superpowers skills (renames, prose rewrites altering PRECHECK semantics, transitive-dependency changes); subtle OpenSpec engine semantic shifts | A human reads upstream release notes when the drift issue fires |
 
-The 2026-11-25 date is a headless re-verification against the versions in the table: `openspec schema validate superpowers-bridge` on OpenSpec 2.1.1, a dogfood change whose artifact and apply instructions resolve, and a source read of the bound Superpowers skills at v7.0.2. It is not an interactive end-to-end cycle (brainstorm dialogue, subagent apply, pull request). That cycle is still a human check.
+The 2026-11-26 date is a headless re-verification against the versions in the table: `openspec schema validate superpowers-bridge` on OpenSpec 2.2.0, a dogfood change whose artifact and apply instructions resolve, a diff of OpenSpec 2.2.0 against 2.1.1, and a source read of the bound Superpowers skills at v7.0.2. It is not an interactive end-to-end cycle (brainstorm dialogue, subagent apply, pull request). That cycle is still a human check.
 
 ### Known breaking changes
 
-Reviewed 2026-11-25, OpenSpec `1.4.1` → `2.1.1` and Superpowers `v5.1.0` → `v7.0.2`. The schema graph (artifact ids, `requires:` edges, PRECHECK-before-invoke) is unchanged, so schema major stays `1`. These are the user-facing and behavioral breaks.
+Reviewed 2026-11-26, OpenSpec `1.4.1` → `2.2.0` and Superpowers `v5.1.0` → `v7.0.2`. npm `@fission-ai/openspec` is `2.2.0`. The newest GitHub release of obra/superpowers is still `v7.0.2` (2026-11-03). The schema graph (artifact ids, `requires:` edges, PRECHECK-before-invoke) is unchanged from 2.1.1 to 2.2.0 (`src/core/artifact-graph` is identical), so schema major stays `1`. These are the user-facing and behavioral breaks.
 
 **OpenSpec 2.0.0 (2026-11-11) removed `/opsx:*` slash commands.** The workflows are the same skills:
 
@@ -532,7 +548,7 @@ Reviewed 2026-11-25, OpenSpec `1.4.1` → `2.1.1` and Superpowers `v5.1.0` → `
 - `using-git-worktrees` still defaults to a project-local `.worktrees/` and now prefers a native worktree tool and asks before creating one.
 - `finishing-a-development-branch` no longer offers Discard on the default menu (v6.2) and does not hardcode `gh pr create`.
 
-OpenSpec 2.2.0 (2026-11-24) added an `/openspec` router skill and did not change the workflow skills. This baseline is 2.1.1, the CLI that was installed and dogfooded. The next weekly drift check will see 2.2.0 as newer.
+**OpenSpec 2.2.0 (2026-11-24) added the `/openspec` router.** The only skill-tree change from 2.1.1 is `skills/openspec/`. The twelve workflow skills are unchanged. The router complements them: it dispatches to `openspec-explore`, `openspec-propose`, `openspec-new-change`, `openspec-continue-change`, `openspec-ff-change`, `openspec-update-change`, `openspec-apply-change`, `openspec-verify-change`, `openspec-sync-specs`, `openspec-archive-change`, `openspec-bulk-archive-change`, or `openspec-onboard`. It does not select a custom schema. This schema's `schema.yaml` format is unchanged. See Usage for how a request reaches `superpowers-bridge`.
 
 No schema-graph migration is required for in-flight v1 changes. Re-copy the bundle so instructions and templates pick up the corrections, and use OpenSpec ≥ 2.0 so the skill names in this README exist.
 

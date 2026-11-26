@@ -4,7 +4,7 @@
 
 [![Schema Structure](https://github.com/JiangWay/openspec-schemas/actions/workflows/validate-schemas.yml/badge.svg?branch=main)](https://github.com/JiangWay/openspec-schemas/actions/workflows/validate-schemas.yml)
 [![Upstream Drift](https://img.shields.io/github/issues-search/JiangWay/openspec-schemas?query=is%3Aopen%20label%3Aupstream-version-check&label=Upstream%20Drift&color=yellow)](https://github.com/JiangWay/openspec-schemas/issues?q=is%3Aopen+label%3Aupstream-version-check)
-[![OpenSpec baseline](https://img.shields.io/badge/OpenSpec_baseline-2.1.1-0277bd)](#相容性)
+[![OpenSpec baseline](https://img.shields.io/badge/OpenSpec_baseline-2.2.0-0277bd)](#相容性)
 [![Superpowers baseline](https://img.shields.io/badge/Superpowers_baseline-v7.0.2-0277bd)](#相容性)
 
 > 把 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 的 artifact 治理流程(**做什麼**)與 [obra/superpowers](https://github.com/obra/superpowers) 的執行技能(**怎麼做**)整合為單一工作流。額外提供 evidence-first 的 `retrospective` artifact,補上 Superpowers 沒有的 retro 能力。
@@ -139,7 +139,7 @@ OpenSpec 管 **「做什麼」**(artifact 生命週期:proposal / specs / tasks 
 
 ## 進入與離開的判斷(Entry & exit gates)
 
-本 schema 的 instruction 只在 OpenSpec workflow skill 跑 `openspec instructions` 時注入(`/openspec-new-change`、`/openspec-continue-change` 等)。OpenSpec 2.0 移除了 `/opsx:*` slash command。如果你以 narrative 方式觸發 Superpowers skill(例如直接對 Claude 說「我們討論一下架構」),預設行為會繞過本 schema —— brainstorming 仍會寫到 `docs/superpowers/specs/`,讓整合的 redirection 完全失效。
+本 schema 的 instruction 只在 OpenSpec workflow skill 跑 `openspec instructions` 時注入(`/openspec-new-change`、`/openspec-continue-change` 等)。OpenSpec 2.0 移除了 `/opsx:*` slash command。OpenSpec 2.2 加了 `/openspec` router,它會挑其中一個 skill,不會自己選這個 schema(見「使用方式」)。如果你以 narrative 方式觸發 Superpowers skill(例如直接對 Claude 說「我們討論一下架構」),預設行為會繞過本 schema —— brainstorming 仍會寫到 `docs/superpowers/specs/`,讓整合的 redirection 完全失效。
 
 這一段告訴你三件事:
 
@@ -305,7 +305,7 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 | 6 | `superpowers:requesting-code-review` | apply step 2,final whole-branch review | 直接(per-task review 是 SDD 自己的 prompt) |
 | 7 | `superpowers:finishing-a-development-branch` | apply step 6 | 直接 |
 
-加上一個 OpenSpec built-in:`openspec-verify-change`(apply step 3,產出 `verify.md`)。
+加上一個 OpenSpec built-in:`openspec-verify-change`(apply step 3)。schema instruction 寫 `verify.md`;那個 skill 自己的報告不寫。
 
 > **不選 `executing-plans` 當 executor**。本 schema 要求 subagent-capable 平台(Claude Code、Codex 等),並選 `subagent-driven-development`。`superpowers:executing-plans` 在 v7.0.2 **會**載入 TDD 與一次 final code review(v5.1.0 時不會)。它仍在同一個 context 跑完全部 task,review 只在最後。本 schema 不選它。若平台沒有 subagent 支援,改用內建 `spec-driven` schema。
 
@@ -323,6 +323,21 @@ Superpowers skill 有預設輸出路徑(例如 brainstorming 寫到 `docs/superp
 ## 使用方式
 
 OpenSpec 2.0 移除了 `/opsx:*` slash command。下面的名稱是 workflow skill。Codex 的前綴是 `$` 而不是 `/`。
+
+### `/openspec` router(OpenSpec 2.2)
+
+`/openspec` 是起點 skill。它不取代 `/openspec-propose`、`/openspec-new-change`、`/openspec-ff-change`、`/openspec-continue-change`、`/openspec-apply-change`、`/openspec-verify-change`、`/openspec-archive-change`。它看使用者要什麼,再交給其中一個 skill(或 explore、update、sync、bulk-archive、onboard)。多個步驟一次只跑一個 skill。某個 skill 要求停下來等使用者時,router 就停在那裡。
+
+router 沒有 schema 參數。它叫到的 skill 用專案預設 schema,除非請求裡點名。要用這個 bridge:
+
+- 在 `openspec/config.yaml` 設 `schema: superpowers-bridge`,或
+- 在請求裡點名,例如 `/openspec new change my-feature --schema superpowers-bridge`。
+
+在 `spec-driven` 專案上只說 `/openspec add a feature`,不會進入這個 schema,brainstorm、plan、retrospective 都不會出現。
+
+change 一旦用了這個 schema,被叫到的 skill 會跟 `openspec instructions`。Superpowers PRECHECK 和輸出重導向是從那裡注入的。`openspec-propose` 和 `openspec-ff-change` 仍只做到 apply 需要的 artifact(到 `plan` 為止)。它們不寫 `verify.md` 或 `retrospective.md`。
+
+`/openspec verify <name>` 跑的是內建 `openspec-verify-change`。那個 skill 寫自己的 Completeness / Correctness / Coherence 報告,不寫本 schema 的 `verify.md`。要產出 `verify.md`,在 apply 之後 continue 這個 change,讓 `openspec instructions verify` 跑起來。
 
 ### 快速流程(推薦)
 ```bash
@@ -394,7 +409,7 @@ Main agent 讀 `plan.md`,為每個 task 派發 fresh implementer subagent。v7 S
 
 #### 3. Verification — `openspec-verify-change`
 
-產出 `verify.md`,跑 7 項檢查:結構驗證(`openspec validate --all --json`)、task 完成度、delta-spec sync 狀態、design/specs 一致性(non-blocking warning)、實作信號(commit 狀態)、front-door routing leak detector(non-blocking warning)、以及 deferred-dogfood vs automated-test 等價性。最後一項僅在 `plan.md` 有 `[~]` 但等價性章節空白(gap 分析被跳過)時才 block,其他情境屬 informational。
+verify artifact instruction 寫出 `verify.md`,跑 7 項檢查:結構驗證(`openspec validate --all --json`)、task 完成度、delta-spec sync 狀態、design/specs 一致性(non-blocking warning)、實作信號(commit 狀態)、front-door routing leak detector(non-blocking warning)、以及 deferred-dogfood vs automated-test 等價性。最後一項僅在 `plan.md` 有 `[~]` 但等價性章節空白(gap 分析被跳過)時才 block,其他情境屬 informational。內建 `openspec-verify-change` 的報告不取代這個檔。`/openspec verify`(2.2 router)只跑那個 skill 並停在它的報告;`verify.md` 要等這個 artifact 的 instruction 才寫。
 
 失敗會回到對應 artifact 修正後重跑 verify。
 
@@ -420,6 +435,7 @@ Evidence-first 反思:§0 Evidence(量化前置數據 —— commit 數、diff �
 
 | 情境 | 指令 |
 |---|---|
+| 沒點名 skill(OpenSpec 2.2 router) | `/openspec <request>`。要點名 `superpowers-bridge`,或把它設成專案預設。否則 change 走 `spec-driven`。 |
 | 首次 clone 專案後 | `bash scripts/install-git-hooks.sh` |
 | 新 change(互動式) | `/openspec-new-change <name> --schema superpowers-bridge` 接著多次 `/openspec-continue-change` |
 | 新 change(一鍵) | `/openspec-ff-change <name>` |
@@ -489,7 +505,7 @@ LLM 不必解讀 timing 文字 —— 跑指令、看結果即可。這是顧慮
 
 | superpowers-bridge | OpenSpec CLI | Superpowers plugin | 基準日期 |
 |---|---|---|---|
-| v1 | `2.1.1` | `v7.0.2` | 2026-11-25 |
+| v1 | `2.2.0` | `v7.0.2` | 2026-11-26 |
 
 ### 驗證機制
 
@@ -501,11 +517,11 @@ LLM 不必解讀 timing 文字 —— 跑指令、看結果即可。這是顧慮
 | Drift 通知 | [`version-check.yml`](../.github/workflows/version-check.yml) 每週,把基準 vs 最新 npm / GitHub release 字串比對 | Pinned ≠ latest upstream | 開 / 更新 [labelled drift issue](https://github.com/JiangWay/openspec-schemas/issues?q=is%3Aopen+label%3Aupstream-version-check),由人類檢核(workflow 維持綠 — drift 是正常狀態,不是錯誤) |
 | 端對端 workflow | **未自動化** | Superpowers skill 內部行為改變(改名、改寫 prose 影響 PRECHECK 語意、傳遞依賴變動);OpenSpec 引擎語意微調 | drift issue 觸發時,人類讀 upstream release notes |
 
-2026-11-25 這個日期是對表中版本的 headless 再驗證:`openspec schema validate superpowers-bridge` 在 OpenSpec 2.1.1 通過、一個 dogfood change 的 artifact 與 apply instruction 能解析、以及對 Superpowers v7.0.2 綁定 skill 原始碼的閱讀。這不是互動式端到端 cycle(brainstorm 對話、subagent apply、pull request)。那個 cycle 仍要人來跑。
+2026-11-26 這個日期是對表中版本的 headless 再驗證:`openspec schema validate superpowers-bridge` 在 OpenSpec 2.2.0 通過、一個 dogfood change 的 artifact 與 apply instruction 能解析、OpenSpec 2.2.0 對 2.1.1 的 diff,以及對 Superpowers v7.0.2 綁定 skill 原始碼的閱讀。這不是互動式端到端 cycle(brainstorm 對話、subagent apply、pull request)。那個 cycle 仍要人來跑。
 
 ### Known breaking changes
 
-2026-11-25 審查,OpenSpec `1.4.1` → `2.1.1`、Superpowers `v5.1.0` → `v7.0.2`。schema graph(artifact id、`requires:` 邊、invoke 前的 PRECHECK)沒變,schema major 維持 `1`。下面是使用者看得到的行為破壞。
+2026-11-26 審查,OpenSpec `1.4.1` → `2.2.0`、Superpowers `v5.1.0` → `v7.0.2`。npm `@fission-ai/openspec` 是 `2.2.0`。obra/superpowers 最新 GitHub release 仍是 `v7.0.2`(2026-11-03)。schema graph(artifact id、`requires:` 邊、invoke 前的 PRECHECK)從 2.1.1 到 2.2.0 沒變(`src/core/artifact-graph` 相同),schema major 維持 `1`。下面是使用者看得到的行為破壞。
 
 **OpenSpec 2.0.0(2026-11-11)移除 `/opsx:*` slash command。** workflow 還是同一組 skill:
 
@@ -532,7 +548,7 @@ LLM 不必解讀 timing 文字 —— 跑指令、看結果即可。這是顧慮
 - `using-git-worktrees` 預設仍是專案內 `.worktrees/`,並改為優先用原生 worktree 工具,建立前會先問。
 - `finishing-a-development-branch` 預設選單不再提供 Discard(v6.2),也不寫死 `gh pr create`。
 
-OpenSpec 2.2.0(2026-11-24)加了 `/openspec` router skill,沒改 workflow skill 行為。本基準是 2.1.1,也就是這次安裝並 dogfood 的 CLI。下一次每週 drift check 會把 2.2.0 看成較新版本。
+**OpenSpec 2.2.0(2026-11-24)加了 `/openspec` router。** 相對 2.1.1,skill 樹只多了 `skills/openspec/`。十二個 workflow skill 沒改。router 是補充:它把請求交給 `openspec-explore`、`openspec-propose`、`openspec-new-change`、`openspec-continue-change`、`openspec-ff-change`、`openspec-update-change`、`openspec-apply-change`、`openspec-verify-change`、`openspec-sync-specs`、`openspec-archive-change`、`openspec-bulk-archive-change` 或 `openspec-onboard`。它不選自訂 schema。本 schema 的 `schema.yaml` 格式沒變。請求怎麼進到 `superpowers-bridge`,見「使用方式」。
 
 進行中的 v1 change 不需要 schema-graph migration。請重新複製 bundle,讓 instruction 與 template 吃到上述修正,並使用 OpenSpec ≥ 2.0,README 裡的 skill 名稱才存在。
 

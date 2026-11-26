@@ -10,10 +10,11 @@ This repo uses [`superpowers-bridge`](https://github.com/JiangWay/openspec-schem
 
 | Trigger you observe | What to do |
 |---|---|
-| User starts a narrative "design discussion / let's brainstorm" | Run verbal `superpowers:brainstorming`, but **do NOT** write to `docs/superpowers/specs/`. Once the conversation converges per the 5 criteria below, promote to `/openspec-propose` |
+| User says `/openspec` without a more specific skill | That is the OpenSpec 2.2 router. It picks a built-in `/openspec-*` skill. It does not select this schema. If `openspec/config.yaml` is not `schema: superpowers-bridge`, the request must name `--schema superpowers-bridge` or the change stays on `spec-driven`. |
+| User starts a narrative "design discussion / let's brainstorm" | Run verbal `superpowers:brainstorming`, but **do NOT** write to `docs/superpowers/specs/`. Once the conversation converges per the 5 criteria below, promote to `/openspec-propose` (name this schema, or rely on the project default) |
 | User invokes `/openspec-new-change` / `/openspec-ff-change` / `/openspec-propose` directly | Follow the schema's flow; artifact instructions inject at each step |
 | User explicitly says bug fix / typo / config tweak / doc update | Direct PR — **do NOT** open a change (see skip rules below) |
-| User is mid-change | Advance with `/openspec-continue-change`, `/openspec-apply-change`, `/openspec-verify-change`, or `/openspec-archive-change` |
+| User is mid-change | Advance with `/openspec-continue-change`, `/openspec-apply-change`, `/openspec-verify-change`, or `/openspec-archive-change`. `/openspec verify` runs the built-in verifier and does not write this schema's `verify.md`; continue the change so `openspec instructions verify` does. |
 
 ### When NOT to open an OpenSpec change (direct PR)
 
@@ -24,7 +25,7 @@ This repo uses [`superpowers-bridge`](https://github.com/JiangWay/openspec-schem
 
 Principle: **process ceremony scales with risk**. External contracts / schema / cross-system integration / compliance → an OpenSpec change. Otherwise → direct PR.
 
-OpenSpec 2.0 removed the `/opsx:*` slash commands. The names above are the workflow skills.
+OpenSpec 2.0 removed the `/opsx:*` slash commands. OpenSpec 2.2 `/openspec` is a router onto the workflow skills above. It does not replace them and it does not select `superpowers-bridge` unless that schema is the project default or the user names it.
 
 ### Verbal brainstorm → OpenSpec change promotion criteria
 

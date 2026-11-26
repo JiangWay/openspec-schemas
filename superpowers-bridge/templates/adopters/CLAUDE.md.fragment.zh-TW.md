@@ -10,10 +10,11 @@
 
 | 你看到的觸發 | 應該怎麼做 |
 |---|---|
-| 使用者以 narrative 開「設計討論 / 腦力激盪」 | 先 verbal `superpowers:brainstorming`,**不**寫到 `docs/superpowers/specs/`;對話收斂後依下方 5 條判準升級到 `/openspec-propose` |
+| 使用者只說 `/openspec`,沒有更具體的 skill | 這是 OpenSpec 2.2 的 router。它會挑一個內建 `/openspec-*` skill,不會自己選這個 schema。若 `openspec/config.yaml` 不是 `schema: superpowers-bridge`,請求必須帶 `--schema superpowers-bridge`,否則 change 留在 `spec-driven`。 |
+| 使用者以 narrative 開「設計討論 / 腦力激盪」 | 先 verbal `superpowers:brainstorming`,**不**寫到 `docs/superpowers/specs/`;對話收斂後依下方 5 條判準升級到 `/openspec-propose`(點名這個 schema,或專案預設已經是它) |
 | 使用者直接呼叫 `/openspec-new-change` / `/openspec-ff-change` / `/openspec-propose` | 走 schema 既定流程;artifact instruction 會在每步注入 |
 | 使用者明確說 bug fix / typo / config 微調 / 文件更新 | 直接 PR,**不**建 change(見下方 skip 規則) |
-| 已經在某個 change 中 | `/openspec-continue-change`、`/openspec-apply-change`、`/openspec-verify-change` 或 `/openspec-archive-change` 推進 |
+| 已經在某個 change 中 | `/openspec-continue-change`、`/openspec-apply-change`、`/openspec-verify-change` 或 `/openspec-archive-change` 推進。`/openspec verify` 跑的是內建 verifier,不寫本 schema 的 `verify.md`;要 continue 這個 change,讓 `openspec instructions verify` 來寫。 |
 
 ### 何時不開 OpenSpec change(直接 PR)
 
@@ -24,7 +25,7 @@
 
 原則:**流程儀式跟風險成正比**。動到對外合約 / schema / 跨系統介接 / 合規邊界 → 開 OpenSpec change;其他 → 直接 PR。
 
-OpenSpec 2.0 移除了 `/opsx:*` slash command。上面的名稱是 workflow skill。
+OpenSpec 2.0 移除了 `/opsx:*` slash command。OpenSpec 2.2 的 `/openspec` 是接到上面那些 workflow skill 的 router。它不取代它們,也不會選 `superpowers-bridge`,除非那個 schema 是專案預設,或使用者點名。
 
 ### Verbal brainstorm 升級到 OpenSpec change 的 5 條判準
 

@@ -1,8 +1,9 @@
 # Verification Report
 
-> 此檔案由 `openspec-verify-change` skill 在 apply 完成後產生，用以確認實作
-> 與 specs / design / tasks 的一致性。失敗的檢查須返回對應 artifact 修正後
-> 再重跑 verify。
+> 此檔案由 schema 的 verify artifact instruction 在 apply 完成後寫入，用以確認實作
+> 與 specs / design / tasks 的一致性。OpenSpec 2.2 的 `/openspec verify` 只跑內建
+> `openspec-verify-change`（Completeness / Correctness / Coherence），不會寫這個檔。
+> 失敗的檢查須返回對應 artifact 修正後再重跑 verify。
 
 **Change**: `<change-name>`
 **Verified at**: `YYYY-MM-DD HH:mm`
