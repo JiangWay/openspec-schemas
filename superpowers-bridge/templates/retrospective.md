@@ -56,9 +56,15 @@ Commit chain (時序):
 | superpowers:writing-plans                        |      |
 | superpowers:using-git-worktrees                  |      |
 | superpowers:subagent-driven-development          |      |
-| (transitive) superpowers:test-driven-development |      |
-| (transitive) superpowers:requesting-code-review  |      |
+| superpowers:test-driven-development              |      |
+| superpowers:requesting-code-review               |      |
 | superpowers:finishing-a-development-branch       |      |
+
+> v7 `subagent-driven-development` does not load TDD itself. Mark
+> `test-driven-development` ✓ only if each implementer dispatch loaded
+> it (RED-GREEN-REFACTOR). Mark `requesting-code-review` ✓ for the
+> final whole-branch review, which reads that skill's code-reviewer.md.
+> The per-task review is SDD's own task reviewer, not that skill.
 
 > **Default expectation**: 全部 ✓。每個 skill 都是 schema 設計的一部分,
 > 跳過屬於異常情境。任一項 ✗ 都必須在下方

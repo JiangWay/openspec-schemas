@@ -4,20 +4,32 @@ description: >
   Spec-driven workflow integrated with Superpowers skills.
   Requirements: Superpowers plugin installed, providing skills:
   brainstorming, writing-plans, using-git-worktrees,
-  subagent-driven-development, finishing-a-development-branch.
-  Requires a subagent-capable platform (Claude Code, Codex, etc.) —
-  this schema does not support runtimes without subagent support,
-  because the alternative executor (executing-plans) loses TDD and
-  code-review transitive activation, defeating Superpowers' value.
+  subagent-driven-development, test-driven-development,
+  requesting-code-review, finishing-a-development-branch.
+  Requires a subagent-capable platform (Claude Code, Codex, etc.).
+  Apply uses subagent-driven-development (fresh implementer and a
+  per-task review). It does not select executing-plans: since
+  Superpowers v6.4 that skill does load TDD and a final review, but
+  it still runs every task in one context and reviews only at the end.
   If your platform lacks subagent support, use spec-driven instead.
   Each artifact / apply step verifies its required skills before
   invoking and surfaces a clear error if any are missing.
   brainstorm → proposal → specs → tasks → plan → verify → retrospective.
-  design is required (reorganizes raw brainstorm output into structured
+  design is required (reorganizes the brainstorm capture into structured
   Context / Goals / Decisions / Risks / Migration; referenced by tasks
   and plan for implementation guidance).
-  Apply phase uses git worktrees + subagent-driven-development
-  (brings TDD and code-review transitively).
+  Apply phase uses git worktrees + subagent-driven-development.
+  Superpowers v7 SDD does not load test-driven-development itself;
+  this schema requires the plan's failing-test-first steps and tells
+  the controller to load that skill on each implementer dispatch.
+  The final whole-branch review uses requesting-code-review's reviewer
+  template. Per-task review is SDD's own task reviewer.
+  OpenSpec 2.2 adds an /openspec router skill. It complements the
+  /openspec-* workflow skills and does not replace them. It does not
+  select this schema: a change uses superpowers-bridge only when it
+  is created with --schema superpowers-bridge or that is the project
+  default in openspec/config.yaml. The router then hands the request
+  to a built-in skill, and that skill reads these instructions.
 
 artifacts:
   - id: brainstorm
@@ -39,21 +51,31 @@ artifacts:
         brainstorming output directly to this change's `brainstorm.md`.
       - brainstorm.md is a RAW CAPTURE — write the brainstorming
         skill's full output as-is, without forcing any template
-        structure. The skill's natural output is typically a decision
-        log (background → decision chain Q1-Qn → design trade-offs),
-        but the format varies by conversation. Preserve the skill's
-        natural organization.
+        structure. On Superpowers v7 the natural output is a design
+        document (intent and why, goals / non-goals, constraints,
+        approaches considered, decisions, and what is left to the
+        builder), not the older Q1–Qn decision log. Preserve whatever
+        the skill actually writes. Do not force the Q1–Qn shape.
       - Do NOT pre-fill design.md during this step. design.md is a
         separate artifact that reorganizes brainstorm.md content into
         structured sections (Context, Goals, Decisions, Risks,
         Migration). That transformation happens in the design step.
 
-      The brainstorming skill will:
-      1. Explore project context
-      2. Ask clarifying questions (one at a time)
-      3. Propose 2-3 approaches with trade-offs
-      4. Present design sections for approval
-      5. Output the validated design
+      v7 brainstorming will, unless the user already closed the
+      questions:
+      1. Read the project before asking
+      2. Ask why, then only questions whose answers change what gets built
+      3. Play that understanding back in chunks
+      4. Present 2–3 approaches with a recommendation and wait for a pick
+      5. Write the design doc and, for project-sized work, run its builder check
+      6. Stop for approval. Nothing is built until the user approves
+
+      HARD STOP for this artifact (overrides the skill):
+      - Do NOT follow the skill's "next, invoke writing-plans" step.
+        proposal, design, specs, and tasks are still ahead of plan.
+      - Do NOT write `docs/superpowers/specs/`. The approved design
+        document is this change's brainstorm.md.
+      - Do NOT create design.md here.
     requires: []
 
   - id: proposal
@@ -88,17 +110,18 @@ artifacts:
     instruction: |
       Create the design document explaining HOW to implement the change.
 
-      Read brainstorm.md as input. brainstorm.md is a raw capture of
-      the brainstorming skill's output (typically a decision log with
-      Q1-Qn decisions, trade-offs, and context). Your job is to
-      REORGANIZE that content into the structured sections below.
+      Read brainstorm.md as input. On Superpowers v7 that file is
+      usually the skill's design document (intent, goals, constraints,
+      approaches, decisions). Older captures may be a Q1–Qn decision
+      log. Either way, REORGANIZE that content into the structured
+      sections below. Do not assume Q1–Qn headings exist.
 
       This is a transformation, not a copy. Extract and restructure:
-      - Decisions (Q1-Qn from brainstorm) → design.md §Decisions
-      - Background/context → design.md §Context
-      - Trade-offs → design.md §Risks / Trade-offs
-      - Add Goals/Non-Goals and Migration Plan (may require
-        inference from brainstorm.md content)
+      - Decisions and the chosen approach → design.md §Decisions
+      - Background / intent → design.md §Context
+      - Trade-offs and constraints → design.md §Risks / Trade-offs
+      - Add Goals/Non-Goals and Migration Plan (infer them when the
+        capture does not name them)
 
       Sections:
       - **Context**: Background, current state, constraints, stakeholders
@@ -181,15 +204,27 @@ artifacts:
       - Do NOT write to `docs/superpowers/plans/`. Instead, write
         the plan directly to this change's `plan.md`.
 
-      The writing-plans skill will:
-      1. Read the tasks.md and design.md for context
-      2. Break each task into 2-5 minute micro-steps (TDD style)
-      3. Include exact file paths, code snippets, test commands
-      4. Add commit points after each task
+      The writing-plans skill (Superpowers v7) will:
+      1. Read tasks.md, design.md, and the delta specs
+      2. Size each task as one test cycle worth a fresh review
+      3. Give each task Files, Interfaces, and checkbox steps
+         (failing test, run, implement, run, commit) with exact paths,
+         commands, and expected output
+      4. Add a header: Goal, Architecture, Tech Stack, Spec,
+         Global Constraints, Review Focus
 
-      Pass the tasks.md content to the skill as the input for
-      decomposition. The plan should reference the specs and
-      design artifacts in this change directory.
+      Use this change's plan.md template. Its header already selects
+      superpowers:subagent-driven-development. Do NOT copy the skill's
+      default header, which also offers superpowers:executing-plans.
+      The execution method for this schema is already supplied:
+      subagent-driven-development. Do not ask the user to choose
+      Native / executing-plans, and do not start implementation
+      from this step.
+
+      Pass tasks.md to the skill as the input for decomposition.
+      The plan should reference the specs and design artifacts in
+      this change directory. Save only to this change's plan.md.
+      The skill's default `docs/superpowers/plans/` path is overridden.
     requires:
       - tasks
 
@@ -221,8 +256,20 @@ artifacts:
       Only after BOTH return positive numbers, proceed to invoke
       the verification skill below.
 
-      Use the Skill tool to invoke **openspec-verify-change** (the
-      `/opsx:verify` slash command is its user-facing equivalent).
+      Use the Skill tool to invoke **openspec-verify-change**
+      (user-facing name `/openspec-verify-change`). OpenSpec 2.0
+      removed the `/opsx:verify` slash command; the skill name is
+      unchanged.
+
+      The skill's own report is Completeness / Correctness /
+      Coherence. That report does not replace this artifact. Record
+      results in verify.md using the template, and still run the
+      numbered checks below. If the skill is unavailable, run those
+      checks manually and record them in verify.md.
+
+      OpenSpec 2.2's /openspec router can dispatch this skill by
+      itself ("verify <name>"). That path still does not write
+      verify.md. This artifact's instruction is what writes it.
 
       IMPORTANT timing note:
       - Unlike other artifacts, verify.md is produced AFTER the apply
@@ -303,10 +350,6 @@ artifacts:
 
       Verify MAY be re-run multiple times as the implementation is
       refined — each run overwrites verify.md with current state.
-
-      If `openspec-verify-change` skill is unavailable, fall back to
-      running the numbered checks above manually and recording results
-      in verify.md.
     requires:
       - plan
 
@@ -483,8 +526,11 @@ apply:
 
        - superpowers:using-git-worktrees
        - superpowers:subagent-driven-development
-         (transitively: superpowers:test-driven-development,
-                        superpowers:requesting-code-review)
+       - superpowers:test-driven-development
+         (load it on each implementer dispatch; v7 SDD does not)
+       - superpowers:requesting-code-review
+         (the final whole-branch review reads this skill's
+         code-reviewer.md; the per-task review is SDD's own prompt)
        - superpowers:finishing-a-development-branch
 
        If any required skill is missing, STOP and inform the user —
@@ -516,25 +562,32 @@ apply:
        - Update tasks.md checkboxes as coarse tasks complete
        - Work within the created worktree
 
-       IMPORTANT — transitive skill activation:
-       subagent-driven-development internally enforces the
-       following skills, so you do NOT need to invoke them
-       manually:
-       - **superpowers:test-driven-development** — every task
-         follows RED-GREEN-REFACTOR. Implementation code written
-         before a failing test is deleted.
-       - **superpowers:requesting-code-review** — after each
-         task, a code-reviewer subagent is dispatched to catch
-         spec compliance and code quality issues. A final review
-         runs for the entire implementation before apply
-         concludes.
+       IMPORTANT — what v7 subagent-driven-development enforces:
+       It dispatches a fresh implementer per task and its own task
+       reviewer (spec compliance + code quality) after each task,
+       then a final whole-branch review. It does NOT load these
+       skills for you:
 
-       This schema does NOT support `superpowers:executing-plans`
-       as a fallback for non-subagent platforms. Per its SKILL.md,
-       executing-plans does not transitively activate TDD or
-       code-review — defeating the rigor that Superpowers brings.
-       If your platform lacks subagent support, use the built-in
-       `spec-driven` schema instead of this one.
+       - **superpowers:test-driven-development** — put it in every
+         implementer dispatch. The implementer prompt follows TDD
+         only when the task says to, and v7 SDD no longer deletes
+         implementation written before a failing test. writing-plans
+         still writes failing-test-first steps; this schema requires
+         those steps to run under the TDD skill (RED-GREEN-REFACTOR).
+       - **superpowers:requesting-code-review** — the per-task review
+         is SDD's task-reviewer prompt, not this skill. The final
+         whole-branch review DOES use this skill's code-reviewer.md.
+         Do not skip that final review.
+
+       This schema does NOT select `superpowers:executing-plans`.
+       Since Superpowers v6.4 that skill does load TDD and a final
+       code review, so the older claim that it omitted both is no
+       longer true. It still runs every task in one context and
+       reviews only at the end. This schema's apply phase is the
+       per-task fresh subagent plus the per-task review. If the
+       platform has no subagent support, use the built-in
+       `spec-driven` schema instead of falling back to
+       executing-plans inside this one.
 
     3. **Verification**: When all tasks are done, produce the
        `verify` artifact by invoking **openspec-verify-change**
@@ -556,7 +609,8 @@ apply:
     5. **Archive (sync spec delta + move folder)**:
 
        After retrospective.md is written, run `openspec archive -y`
-       (or invoke `/opsx:archive`). This:
+       (or invoke **openspec-archive-change**; OpenSpec 2.0 removed
+       the `/opsx:archive` slash command). This:
        - syncs delta specs from `openspec/changes/<name>/specs/`
          into `openspec/specs/<capability>/spec.md`
        - moves the change folder to

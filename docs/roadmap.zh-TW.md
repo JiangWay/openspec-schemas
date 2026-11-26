@@ -13,7 +13,7 @@
 這些項目記錄在 `~/.claude/plans/pr-quizzical-oasis.md`(實作 plan):
 
 - [ ] **`workflow-retrospective` skill 打包** — 目前 retrospective procedure 內嵌在 schema instruction 裡(Decision 3)。如果有真實使用者反映需要互動式呼叫 `/workflow-retrospective`(在 schema 流程之外),會把它升級成獨立的 Claude Code plugin
-- [ ] **End-to-end CI 整合測試** — 目前 CI 只跑 `openspec schema validate`。round-trip 測試(`/opsx:new` 一路到 `/opsx:archive`)能抓更多回歸,但需要 Superpowers 進入 CI 環境
+- [ ] **End-to-end CI 整合測試** — 目前 CI 只跑 `openspec schema validate`。round-trip 測試(`/openspec-new-change` 一路到 `/openspec-archive-change`,含 OpenSpec 2.2 `/openspec` router 把請求派到這些 skill 的路徑)能抓更多回歸,但需要 Superpowers 進入 CI 環境。router 不會自己選 `superpowers-bridge`,除非那個 schema 是專案預設,或請求裡點名。
 - [ ] **Verify artifact 5 處改進** — 列在 v1.1 backlog A(template 表達清晰、design 可選處理、worktree 來源、pass 標準、TDD 註記)
 
 ## 等 OpenSpec core

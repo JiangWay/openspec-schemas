@@ -4,8 +4,8 @@
 
 [![Schema Structure](https://github.com/JiangWay/openspec-schemas/actions/workflows/validate-schemas.yml/badge.svg?branch=main)](https://github.com/JiangWay/openspec-schemas/actions/workflows/validate-schemas.yml)
 [![Upstream Drift](https://img.shields.io/github/issues-search/JiangWay/openspec-schemas?query=is%3Aopen%20label%3Aupstream-version-check&label=Upstream%20Drift&color=yellow)](https://github.com/JiangWay/openspec-schemas/issues?q=is%3Aopen+label%3Aupstream-version-check)
-[![OpenSpec baseline](https://img.shields.io/badge/OpenSpec_baseline-1.4.1-0277bd)](#相容性)
-[![Superpowers baseline](https://img.shields.io/badge/Superpowers_baseline-v5.1.0-0277bd)](#相容性)
+[![OpenSpec baseline](https://img.shields.io/badge/OpenSpec_baseline-2.2.0-0277bd)](#相容性)
+[![Superpowers baseline](https://img.shields.io/badge/Superpowers_baseline-v7.0.2-0277bd)](#相容性)
 
 > 把 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 的 artifact 治理流程(**做什麼**)與 [obra/superpowers](https://github.com/obra/superpowers) 的執行技能(**怎麼做**)整合為單一工作流。額外提供 evidence-first 的 `retrospective` artifact,補上 Superpowers 沒有的 retro 能力。
 >
@@ -112,7 +112,7 @@ rm -rf /tmp/oss-upgrade
 
 > bridge 目錄是 monolithic — 要嘛整包換新版,要嘛留舊版,**沒有逐檔 opt-in**。CLAUDE.md 是升級流程唯一會碰專案根目錄的檔案,而且永遠等你 ack。
 
-> In-flight change(任一 phase:brainstorm / design / specs / ...)仍合法 — schema graph(`requires:` edges、PRECHECKs、artifact 依賴)在 v1.x 沒有變動。升級前產出的 `verify.md` / `retrospective.md` 仍可讀;若對它們重跑 `/opsx:verify` 或 `/opsx:continue → retrospective`,會用新 template 結構覆蓋。
+> In-flight change(任一 phase:brainstorm / design / specs / ...)仍合法 — schema graph(`requires:` edges、PRECHECKs、artifact 依賴)在 v1.x 沒有變動。升級前產出的 `verify.md` / `retrospective.md` 仍可讀;若對它們重跑 `/openspec-verify-change` 或 `/openspec-continue-change → retrospective`,會用新 template 結構覆蓋。
 
 > 未來若 schema graph 結構性變動(增刪 artifact、改 `requires:` edges、PRECHECK 變動),會在 README 上方加版本欄位 + 提供 migration guide;v1 → v1.x 純 instruction prose 改動安全,不需 migration。
 
@@ -139,7 +139,7 @@ OpenSpec 管 **「做什麼」**(artifact 生命週期:proposal / specs / tasks 
 
 ## 進入與離開的判斷(Entry & exit gates)
 
-本 schema 的 instruction 只在 `/opsx:*` 指令啟動 artifact 時才注入 prompt。如果你以 narrative 方式觸發 Superpowers skill(例如直接對 Claude 說「我們討論一下架構」),預設行為會繞過本 schema —— brainstorming 仍會寫到 `docs/superpowers/specs/`,讓整合的 redirection 完全失效。
+本 schema 的 instruction 只在 OpenSpec workflow skill 跑 `openspec instructions` 時注入(`/openspec-new-change`、`/openspec-continue-change` 等)。OpenSpec 2.0 移除了 `/opsx:*` slash command。OpenSpec 2.2 加了 `/openspec` router,它會挑其中一個 skill,不會自己選這個 schema(見「使用方式」)。如果你以 narrative 方式觸發 Superpowers skill(例如直接對 Claude 說「我們討論一下架構」),預設行為會繞過本 schema —— brainstorming 仍會寫到 `docs/superpowers/specs/`,讓整合的 redirection 完全失效。
 
 這一段告訴你三件事:
 
@@ -153,7 +153,7 @@ OpenSpec 管 **「做什麼」**(artifact 生命週期:proposal / specs / tasks 
 
 | 情境 | 是否要建 change | 怎麼做 |
 |---|---|---|
-| 新功能 / 新 capability | ✅ 要 | `/opsx:new <name> --schema superpowers-bridge` |
+| 新功能 / 新 capability | ✅ 要 | `/openspec-new-change <name> --schema superpowers-bridge` |
 | Breaking change | ✅ 要 | 同上 |
 | 架構變更 | ✅ 要 | 同上 |
 | Bug fix(恢復原本行為,不變更合約) | ❌ 不要 | 直接 PR |
@@ -169,7 +169,7 @@ OpenSpec 管 **「做什麼」**(artifact 生命週期:proposal / specs / tasks 
 
 如果使用者以 narrative(「我們來討論架構」「腦力激盪一下」)觸發了 `superpowers:brainstorming`,brainstorming 的產出**不可以**寫到 `docs/superpowers/specs/` —— 那會繞過本 schema 的 output redirection,在 repo 裡留下 orphan artifact。
 
-正確流程:在以下 5 條判準**全部滿足**之前,維持 verbal brainstorm;全滿足時升級到 `/opsx:propose` 或 `/opsx:new`,讓 brainstorming 的對話結論落到 `openspec/changes/<name>/brainstorm.md`。
+正確流程:在以下 5 條判準**全部滿足**之前,維持 verbal brainstorm;全滿足時升級到 `/openspec-propose` 或 `/openspec-new-change`,讓 brainstorming 的對話結論落到 `openspec/changes/<name>/brainstorm.md`。
 
 1. **Scope 鎖定** —— 一句話講清「包含什麼、不包含什麼」,且不會在每一輪對話又長出新項目
 2. **主要設計分歧已收斂** —— 替代方案討論過、選了一個;剩下的 unknown 是**明確列出的 TBD**(有 owner、有影響面),不是「還沒想到」
@@ -178,7 +178,7 @@ OpenSpec 管 **「做什麼」**(artifact 生命週期:proposal / specs / tasks 
 5. **對話進入收斂** —— 最近 1-2 輪沒有「啊還有另一種做法是...」這種 fork
 
 任一條缺 → 繼續 brainstorm。全滿足 →:
-- LLM **應主動建議** 「看起來條件齊了,要不要開 `/opsx:propose`?」
+- LLM **應主動建議** 「看起來條件齊了,要不要開 `/openspec-propose`?」
 - 使用者**也可主動講** 「把這個開成 change 吧」
 - 不論誰先提,**升級都需人類 ack**,不會自動觸發
 
@@ -186,8 +186,8 @@ OpenSpec 管 **「做什麼」**(artifact 生命週期:proposal / specs / tasks 
 
 | 反模式 | 為什麼錯 |
 |---|---|
-| schema 已安裝後仍讓 brainstorming 寫到 `docs/superpowers/specs/` | 繞過 [schema.yaml](./schema.yaml) line 35-39 的 redirection,留下 orphan artifact |
-| 讓 writing-plans 寫到 `docs/superpowers/plans/` | 同理(schema.yaml line 169-171) |
+| schema 已安裝後仍讓 brainstorming 寫到 `docs/superpowers/specs/` | 繞過 [schema.yaml](./schema.yaml) brainstorm artifact 的 redirection,留下 orphan artifact |
+| 讓 writing-plans 寫到 `docs/superpowers/plans/` | 同理(plan artifact instruction) |
 | TBD 還沒收斂就升級到 opsx | 那些 TBD 在 apply phase 一樣會擋住進度,只是把問題往後挪 |
 | 對 bug fix / typo 也建 change | 流程儀式 > 實質風險,反而拖慢交付 |
 
@@ -210,7 +210,7 @@ brainstorm ──┬──→ proposal ──→ specs ──┐
 | 起點 | proposal(手動撰寫) | **brainstorm**(調用 brainstorming skill) |
 | Plan 層級 | tasks(粗粒度) | tasks + **plan**(TDD micro-step) |
 | apply 需要 | tasks | **plan** |
-| apply 方式 | 標準 task-by-task | **worktree + subagent-driven-development**(含 TDD + code-review 傳遞) |
+| apply 方式 | 標準 task-by-task | **worktree + subagent-driven-development**(每次 implementer dispatch 載入 TDD;per-task review 是 SDD 自己的 prompt;final review 用 requesting-code-review) |
 | Post-apply | (無) | **verify** + **retrospective** artifacts |
 | 新增 artifacts | — | brainstorm, plan, verify, retrospective |
 
@@ -220,7 +220,7 @@ brainstorm ──┬──→ proposal ──→ specs ──┐
 
 ```mermaid
 flowchart TD
-    Start([/opsx:propose · /opsx:new])
+    Start([/openspec-propose · /openspec-new-change])
 
     subgraph Plan ["📝 PLANNING — 7 個 artifact"]
         direction TB
@@ -244,7 +244,7 @@ flowchart TD
         direction TB
         A0["<b>0. Pre-flight skill check</b>"]
         A1["<b>1. Workspace</b><br/><i>using-git-worktrees</i>"]
-        A2["<b>2. Executor</b><br/><i>subagent-driven-development</i><br/>↳ TDD + code-review(傳遞)"]
+        A2["<b>2. Executor</b><br/><i>subagent-driven-development</i><br/>↳ 每次 dispatch 載入 TDD;final review 用 requesting-code-review"]
         A3["<b>3. Verification</b><br/><i>openspec-verify-change</i> → verify.md"]
         A4["<b>4. Retrospective</b> → retrospective.md<br/>(PR 之前;hot context)"]
         A5["<b>5. Archive</b><br/><i>openspec archive -y</i><br/>(sync delta + 搬 folder)"]
@@ -279,7 +279,7 @@ PLANNING ━━━━━━━━━━━━━━━━━━━━━━━�
 APPLY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   0. Pre-flight skill check
   1. superpowers:using-git-worktrees
-  2. superpowers:subagent-driven-development(+ TDD + code-review 傳遞)
+  2. superpowers:subagent-driven-development(每次 dispatch 載入 TDD;final review 用 requesting-code-review)
   3. openspec-verify-change → verify.md ◄┐
                               │           │ blocking → 回去修
                               ▼           │
@@ -301,13 +301,13 @@ APPLY ━━━━━━━━━━━━━━━━━━━━━━━━�
 | 2 | `superpowers:writing-plans` | `plan` artifact instruction | 直接(含 PRECHECK) |
 | 3 | `superpowers:using-git-worktrees` | apply step 1 | 直接 |
 | 4 | `superpowers:subagent-driven-development` | apply step 2 | 直接 |
-| 5 | `superpowers:test-driven-development` | (#4 內部觸發) | **傳遞** |
-| 6 | `superpowers:requesting-code-review` | (#4 內部觸發) | **傳遞** |
-| 7 | `superpowers:finishing-a-development-branch` | apply step 4 | 直接 |
+| 5 | `superpowers:test-driven-development` | apply step 2,每次 implementer dispatch | 直接(v7 SDD 不會自己載入) |
+| 6 | `superpowers:requesting-code-review` | apply step 2,final whole-branch review | 直接(per-task review 是 SDD 自己的 prompt) |
+| 7 | `superpowers:finishing-a-development-branch` | apply step 6 | 直接 |
 
-加上一個 OpenSpec built-in:`openspec-verify-change`(apply step 3,產出 `verify.md`)。
+加上一個 OpenSpec built-in:`openspec-verify-change`(apply step 3)。schema instruction 寫 `verify.md`;那個 skill 自己的報告不寫。
 
-> **不支援 `executing-plans` fallback**。本 schema 是 opinionated 的:要求 subagent-capable 平台(Claude Code、Codex 等)。替代 executor `superpowers:executing-plans` 並**不會** transitively 觸發 TDD 或 code-review(已對 [SKILL.md](https://github.com/obra/superpowers/blob/main/skills/executing-plans/SKILL.md) 做事實查核 —— body 完全沒提到 TDD 或 code-review,Integration 段也未列出 `test-driven-development` 與 `requesting-code-review`)。退到 2b 等於靜默降級 Superpowers 的核心價值。若你的平台沒有 subagent 支援,改用 OpenSpec 內建的 `spec-driven` schema。
+> **不選 `executing-plans` 當 executor**。本 schema 要求 subagent-capable 平台(Claude Code、Codex 等),並選 `subagent-driven-development`。`superpowers:executing-plans` 在 v7.0.2 **會**載入 TDD 與一次 final code review(v5.1.0 時不會)。它仍在同一個 context 跑完全部 task,review 只在最後。本 schema 不選它。若平台沒有 subagent 支援,改用內建 `spec-driven` schema。
 
 ### Output redirection(產出重導)
 
@@ -322,34 +322,51 @@ Superpowers skill 有預設輸出路徑(例如 brainstorming 寫到 `docs/superp
 
 ## 使用方式
 
+OpenSpec 2.0 移除了 `/opsx:*` slash command。下面的名稱是 workflow skill。Codex 的前綴是 `$` 而不是 `/`。
+
+### `/openspec` router(OpenSpec 2.2)
+
+`/openspec` 是起點 skill。它不取代 `/openspec-propose`、`/openspec-new-change`、`/openspec-ff-change`、`/openspec-continue-change`、`/openspec-apply-change`、`/openspec-verify-change`、`/openspec-archive-change`。它看使用者要什麼,再交給其中一個 skill(或 explore、update、sync、bulk-archive、onboard)。多個步驟一次只跑一個 skill。某個 skill 要求停下來等使用者時,router 就停在那裡。
+
+router 沒有 schema 參數。它叫到的 skill 用專案預設 schema,除非請求裡點名。要用這個 bridge:
+
+- 在 `openspec/config.yaml` 設 `schema: superpowers-bridge`,或
+- 在請求裡點名,例如 `/openspec new change my-feature --schema superpowers-bridge`。
+
+在 `spec-driven` 專案上只說 `/openspec add a feature`,不會進入這個 schema,brainstorm、plan、retrospective 都不會出現。
+
+change 一旦用了這個 schema,被叫到的 skill 會跟 `openspec instructions`。Superpowers PRECHECK 和輸出重導向是從那裡注入的。`openspec-propose` 和 `openspec-ff-change` 仍只做到 apply 需要的 artifact(到 `plan` 為止)。它們不寫 `verify.md` 或 `retrospective.md`。
+
+`/openspec verify <name>` 跑的是內建 `openspec-verify-change`。那個 skill 寫自己的 Completeness / Correctness / Coherence 報告,不寫本 schema 的 `verify.md`。要產出 `verify.md`,在 apply 之後 continue 這個 change,讓 `openspec instructions verify` 跑起來。
+
 ### 快速流程(推薦)
 ```bash
-/opsx:ff my-feature    # 一條龍:scaffold + brainstorm + proposal + design + specs + tasks + plan
-/opsx:apply            # worktree + subagent-driven-development(含 TDD + code-review)
-/opsx:verify           # 產出 verify.md(7 項檢查)
-/opsx:continue         # → retrospective(產出 retrospective.md,§0 + 6 sections)
-/opsx:archive          # 封存
+/openspec-ff-change my-feature    # 一條龍:scaffold + brainstorm + proposal + design + specs + tasks + plan
+/openspec-apply-change            # worktree + subagent-driven-development(每次 dispatch 載入 TDD)
+/openspec-verify-change           # 產出 verify.md(7 項檢查)
+/openspec-continue-change         # → retrospective(產出 retrospective.md,§0 + 6 sections)
+/openspec-archive-change          # 封存
 ```
 
 ### 逐步流程
 ```bash
-/opsx:new my-feature --schema superpowers-bridge
-/opsx:continue         # → brainstorm(互動式對話)
-/opsx:continue         # → proposal
-/opsx:continue         # → design(將 brainstorm 重組為結構化決策)
-/opsx:continue         # → specs
-/opsx:continue         # → tasks
-/opsx:continue         # → plan
-/opsx:apply            # → 實作 + worktree + subagent-driven-development
-/opsx:verify           # → verify.md(post-apply,跑 7 項檢查)
-/opsx:continue         # → retrospective.md(post-verify,evidence-first §0 + 6 sections)
-/opsx:archive
+/openspec-new-change my-feature --schema superpowers-bridge
+/openspec-continue-change         # → brainstorm(互動式對話)
+/openspec-continue-change         # → proposal
+/openspec-continue-change         # → design(將 brainstorm 重組為結構化決策)
+/openspec-continue-change         # → specs
+/openspec-continue-change         # → tasks
+/openspec-continue-change         # → plan
+/openspec-apply-change            # → 實作 + worktree + subagent-driven-development
+/openspec-verify-change           # → verify.md(post-apply,跑 7 項檢查)
+/openspec-continue-change         # → retrospective.md(post-verify,evidence-first §0 + 6 sections)
+/openspec-archive-change
 ```
 
 ### 切回 spec-driven
 ```bash
 # 單一 change 用不同 schema
-/opsx:new my-simple-fix --schema spec-driven
+/openspec-new-change my-simple-fix --schema spec-driven
 
 # 或修改專案預設(openspec/config.yaml: schema: spec-driven)
 ```
@@ -358,14 +375,16 @@ Superpowers skill 有預設輸出路徑(例如 brainstorming 寫到 `docs/superp
 
 ## Apply phase 詳細步驟
 
-`/opsx:apply` 會觸發 [schema.yaml](./schema.yaml) `apply.instruction` 中的步驟:
+`/openspec-apply-change` 會觸發 [schema.yaml](./schema.yaml) `apply.instruction` 中的步驟:
 
 #### 0. Pre-flight — 驗證必要的 Superpowers skill
 
 確認以下 skill 都安裝才繼續:
 
 - `superpowers:using-git-worktrees`
-- `superpowers:subagent-driven-development`(傳遞依賴:`test-driven-development`、`requesting-code-review`)
+- `superpowers:subagent-driven-development`
+- `superpowers:test-driven-development`(每次 implementer dispatch 載入;v7 SDD 不會自己載入)
+- `superpowers:requesting-code-review`(final whole-branch review 讀它的 code-reviewer.md)
 - `superpowers:finishing-a-development-branch`
 
 skill 缺失 → STOP 並通知使用者,不靜默 fallback,本 schema 內也沒有 manual mode。建議使用者在那個 change 改用 OpenSpec 內建的 `spec-driven` schema,或安裝缺失的 skill 後重來。
@@ -374,22 +393,23 @@ skill 缺失 → STOP 並通知使用者,不靜默 fallback,本 schema 內也沒
 
 #### 1. Workspace — `superpowers:using-git-worktrees`
 
-建立 `.worktrees/<change-name>/`、切到新 branch、跑專案 setup、確認 test baseline 乾淨。
+建立隔離 workspace。skill 在 harness 有原生 worktree 工具時優先用它;否則在取得同意後使用專案內的 `.worktrees/<change-name>/`,確認該目錄被 gitignore,切到新 branch,跑專案 setup,並確認 test baseline 乾淨。
 
 #### 2. Executor — `superpowers:subagent-driven-development`
 
-Main agent 讀 `plan.md`,為每個 micro-task 派發 fresh subagent。每個 subagent 自動傳遞:
+Main agent 讀 `plan.md`,為每個 task 派發 fresh implementer subagent。v7 SDD 不會替你載入 TDD 或 `requesting-code-review`:
 
-- **TDD**(`superpowers:test-driven-development`):先寫失敗測試 → 看著它 fail → 寫最小程式碼 → pass;production code 寫在沒測試之前會被刪掉重來
-- **per-task code review**(`superpowers:requesting-code-review`):spec compliance review + code quality review;Critical 級問題擋下進度
+- **TDD**(`superpowers:test-driven-development`):controller 在每次 implementer dispatch 載入這個 skill。plan 的步驟是先寫失敗測試 → 看它 fail → 寫最小程式碼 → pass。v7 SDD 不再自行刪掉「測試之前就寫好的實作」。
+- **Per-task review**:SDD 自己的 task-reviewer prompt(spec compliance + code quality),不是 `requesting-code-review`。
+- **Final review**(`superpowers:requesting-code-review`):全部 task 完成後,whole-branch review 讀這個 skill 的 `code-reviewer.md`。
 
-完成 coarse task 就更新 `tasks.md` checkbox。所有 task 跑完後,對整個 implementation 再做一次 final code review。
+完成 coarse task 就更新 `tasks.md` checkbox。
 
-本 schema **不支援** `superpowers:executing-plans` 作為 fallback。理由見下方「六個值得記住的設計觸點」段。
+本 schema 不選 `superpowers:executing-plans`。理由見下方設計觸點 #4。
 
 #### 3. Verification — `openspec-verify-change`
 
-產出 `verify.md`,跑 7 項檢查:結構驗證(`openspec validate --all --json`)、task 完成度、delta-spec sync 狀態、design/specs 一致性(non-blocking warning)、實作信號(commit 狀態)、front-door routing leak detector(non-blocking warning)、以及 deferred-dogfood vs automated-test 等價性。最後一項僅在 `plan.md` 有 `[~]` 但等價性章節空白(gap 分析被跳過)時才 block,其他情境屬 informational。
+verify artifact instruction 寫出 `verify.md`,跑 7 項檢查:結構驗證(`openspec validate --all --json`)、task 完成度、delta-spec sync 狀態、design/specs 一致性(non-blocking warning)、實作信號(commit 狀態)、front-door routing leak detector(non-blocking warning)、以及 deferred-dogfood vs automated-test 等價性。最後一項僅在 `plan.md` 有 `[~]` 但等價性章節空白(gap 分析被跳過)時才 block,其他情境屬 informational。內建 `openspec-verify-change` 的報告不取代這個檔。`/openspec verify`(2.2 router)只跑那個 skill 並停在它的報告;`verify.md` 要等這個 artifact 的 instruction 才寫。
 
 失敗會回到對應 artifact 修正後重跑 verify。
 
@@ -401,13 +421,13 @@ Evidence-first 反思:§0 Evidence(量化前置數據 —— commit 數、diff �
 
 在開 PR **之前**寫好,讓 retro 跟其他 artifact 一起落在同一個 PR diff。
 
-#### 5. Archive — `openspec archive -y`(或 `/opsx:archive`)
+#### 5. Archive — `openspec archive -y`(或 `/openspec-archive-change`)
 
 把 delta spec sync 到 `openspec/specs/<capability>/spec.md`、把 change 目錄搬到 `openspec/changes/archive/YYYY-MM-DD-<name>/`。在開 PR **之前**跑完,這樣 PR diff 反映完整的 archived cycle 狀態(所有 artifact 完成、spec 已 sync、folder 在 `archive/`)。
 
 #### 6. Completion — `superpowers:finishing-a-development-branch`
 
-確認 tests 全綠、呈現 merge / PR / keep-branch / discard 選項、清理 worktree。**PR 是最後一步** —— 若 retro 或 archive 還沒跑,先補完。
+確認 tests 全綠,然後給三個選項:merge 回 base branch、push 並開 pull request、或保留 branch。Discard 只在使用者明確要求時出現,而且要打字確認。這個 skill 是 forge-neutral(不寫死 `gh pr create`)。接著清理 worktree。**PR 是最後一步** —— 若 retro 或 archive 還沒跑,先補完。
 
 ---
 
@@ -415,14 +435,15 @@ Evidence-first 反思:§0 Evidence(量化前置數據 —— commit 數、diff �
 
 | 情境 | 指令 |
 |---|---|
+| 沒點名 skill(OpenSpec 2.2 router) | `/openspec <request>`。要點名 `superpowers-bridge`,或把它設成專案預設。否則 change 走 `spec-driven`。 |
 | 首次 clone 專案後 | `bash scripts/install-git-hooks.sh` |
-| 新 change(互動式) | `/opsx:new <name> --schema superpowers-bridge` 接著多次 `/opsx:continue` |
-| 新 change(一鍵) | `/opsx:ff <name>` |
-| 恢復中斷的 change | `/opsx:continue <name>` |
-| 進入實作 | `/opsx:apply <name>` |
-| 手動 verify | `/opsx:verify <name>` |
-| 歸檔 | `/opsx:archive <name>` |
-| 用內建(跳過 brainstorm) | `/opsx:new <name> --schema spec-driven` |
+| 新 change(互動式) | `/openspec-new-change <name> --schema superpowers-bridge` 接著多次 `/openspec-continue-change` |
+| 新 change(一鍵) | `/openspec-ff-change <name>` |
+| 恢復中斷的 change | `/openspec-continue-change <name>` |
+| 進入實作 | `/openspec-apply-change <name>` |
+| 手動 verify | `/openspec-verify-change <name>` |
+| 歸檔 | `/openspec-archive-change <name>` |
+| 用內建(跳過 brainstorm) | `/openspec-new-change <name> --schema spec-driven` |
 | 列出所有 schema | `openspec schemas` |
 | 查看某 change 進度 | `openspec status --change <name> --json` |
 | 列出 active changes | `openspec list` |
@@ -438,15 +459,15 @@ Evidence-first 反思:§0 Evidence(量化前置數據 —— commit 數、diff �
 
 ### 2. Schema-level vs prompt-level 整合
 
-整合**完全**發生在 `instruction:` 欄位(純 prompt)。Superpowers 升版某個 skill 的行為時,本 schema 不用改。只有 skill 被改名或移除時才要 touch `schema.yaml`。
+整合**完全**發生在 `instruction:` 欄位(純 prompt)。skill 行為改變但 instruction 沒寫到的,schema 不用改。skill 被改名或移除,或 instruction 寫了一個 upstream 已經沒有的行為時,才改 `schema.yaml`。2026-11-25 這次是後者:v7 的 subagent-driven-development 不再自動載入 TDD,而且 v7 brainstorming 會接著叫 writing-plans。
 
-### 3. 傳遞依賴顯式化
+### 3. TDD 與 review 要寫明,不能假設
 
-TDD 與 code-review 平常藏在 `subagent-driven-development` 的 SKILL.md 裡。本 schema apply step 2a 的 instruction **直接列出**這兩個 transitive activation,讓讀者一眼看懂「apply 階段到底會發生什麼」。
+v5 的 `subagent-driven-development` 會列出它啟動的 TDD 與 `requesting-code-review`。v7 不會。apply instruction 現在寫明各自在哪裡發生:每次 implementer dispatch 載入 TDD,per-task review 用 SDD 自己的 prompt,final whole-branch review 用 `requesting-code-review` 的 `code-reviewer.md`。
 
-### 4. Opinionated:只支援 subagent 平台,沒有手動 fallback
+### 4. Opinionated:只支援 subagent 平台,不用 inline executor
 
-本 schema 要求 subagent-capable 平台(Claude Code、Codex 等)。替代 executor `superpowers:executing-plans` **不會** transitively 觸發 TDD 或 code-review(已對其 [SKILL.md](https://github.com/obra/superpowers/blob/main/skills/executing-plans/SKILL.md) 做事實查核 —— body 完全沒提及這兩者,Integration 段也未列出 `test-driven-development` 與 `requesting-code-review`)。退到 2b 等於靜默丟掉 Superpowers 帶給整合的核心價值。我們選擇在 Step 0 fail loud,並指引使用者改用內建的 `spec-driven` schema。
+本 schema 要求 subagent-capable 平台(Claude Code、Codex 等),並選 `subagent-driven-development`。v5.1.0 的 `superpowers:executing-plans` 沒提到 TDD 或 code review。v7.0.2 會載入 `test-driven-development` 並做一次 final review,但仍然沒有每個 task 一個 fresh subagent,也沒有 per-task review。本 schema 不選它。平台沒有 subagent 支援時,改用內建 `spec-driven` schema。
 
 ### 5. Evidence-based PRECHECK for verify and retrospective(Layer 2 capability detection)
 
@@ -484,7 +505,7 @@ LLM 不必解讀 timing 文字 —— 跑指令、看結果即可。這是顧慮
 
 | superpowers-bridge | OpenSpec CLI | Superpowers plugin | 基準日期 |
 |---|---|---|---|
-| v1 | `1.4.1` | `v5.1.0` | 2026-06-10 |
+| v1 | `2.2.0` | `v7.0.2` | 2026-11-26 |
 
 ### 驗證機制
 
@@ -496,11 +517,40 @@ LLM 不必解讀 timing 文字 —— 跑指令、看結果即可。這是顧慮
 | Drift 通知 | [`version-check.yml`](../.github/workflows/version-check.yml) 每週,把基準 vs 最新 npm / GitHub release 字串比對 | Pinned ≠ latest upstream | 開 / 更新 [labelled drift issue](https://github.com/JiangWay/openspec-schemas/issues?q=is%3Aopen+label%3Aupstream-version-check),由人類檢核(workflow 維持綠 — drift 是正常狀態,不是錯誤) |
 | 端對端 workflow | **未自動化** | Superpowers skill 內部行為改變(改名、改寫 prose 影響 PRECHECK 語意、傳遞依賴變動);OpenSpec 引擎語意微調 | drift issue 觸發時,人類讀 upstream release notes |
 
-「基準日期」由 maintainer 手動重跑完整 cycle 確認沒退步後才推進。在那之前,日期代表的是人類聲明,不是自動測試通過。
+2026-11-26 這個日期是對表中版本的 headless 再驗證:`openspec schema validate superpowers-bridge` 在 OpenSpec 2.2.0 通過、一個 dogfood change 的 artifact 與 apply instruction 能解析、OpenSpec 2.2.0 對 2.1.1 的 diff,以及對 Superpowers v7.0.2 綁定 skill 原始碼的閱讀。這不是互動式端到端 cycle(brainstorm 對話、subagent apply、pull request)。那個 cycle 仍要人來跑。
 
 ### Known breaking changes
 
-目前尚無。未來 schema graph 結構性變動(artifact 增刪、`requires:` edge 變動、PRECHECK 變動)會記錄在這裡並附 migration note。
+2026-11-26 審查,OpenSpec `1.4.1` → `2.2.0`、Superpowers `v5.1.0` → `v7.0.2`。npm `@fission-ai/openspec` 是 `2.2.0`。obra/superpowers 最新 GitHub release 仍是 `v7.0.2`(2026-11-03)。schema graph(artifact id、`requires:` 邊、invoke 前的 PRECHECK)從 2.1.1 到 2.2.0 沒變(`src/core/artifact-graph` 相同),schema major 維持 `1`。下面是使用者看得到的行為破壞。
+
+**OpenSpec 2.0.0(2026-11-11)移除 `/opsx:*` slash command。** workflow 還是同一組 skill:
+
+| 移除的指令 | Skill(OpenSpec 2.x) |
+|---|---|
+| `/opsx:new` | `/openspec-new-change` |
+| `/opsx:ff` | `/openspec-ff-change` |
+| `/opsx:propose` | `/openspec-propose` |
+| `/opsx:continue` | `/openspec-continue-change` |
+| `/opsx:apply` | `/openspec-apply-change` |
+| `/opsx:verify` | `/openspec-verify-change` |
+| `/opsx:archive` | `/openspec-archive-change` |
+
+`openspec schema validate`、`openspec new change`、`openspec status`、`openspec instructions`、`openspec validate --all --json`、`openspec archive -y` 仍然可用。`openspec-verify-change` 還在。它的報告是 Completeness / Correctness / Coherence,不會取代本 schema 的 `verify.md` 模板。
+
+**Superpowers v7.0.0 重寫了 `brainstorming`。** skill 會把設計文件(intent、goals、constraints、approaches、decisions)寫到 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`,然後叫 agent 去跑 `writing-plans`。本 schema 仍把那份文件導到 `brainstorm.md`,仍禁止在這一步寫 `design.md`,並明確禁止跟著去跑 writing-plans。舊的 Q1–Qn decision log 不再是預設形狀。
+
+**Superpowers v6–v7 改了 TDD 與 review 怎麼掛上。** 對照 tag `v7.0.2` 的 `skills/*/SKILL.md`:
+
+- 綁定的 skill 名稱都還在:`brainstorming`、`writing-plans`、`using-git-worktrees`、`subagent-driven-development`、`test-driven-development`、`requesting-code-review`、`finishing-a-development-branch`、`executing-plans`。沒有改名、沒有移除。v7 新增 `diagnosing-superpowers`,本 schema 不呼叫它。
+- `subagent-driven-development` 不再載入 `test-driven-development`,也不再刪掉「測試之前就寫好的實作」。per-task review 是它自己的 task-reviewer prompt。final whole-branch review 仍用 `requesting-code-review` 的 `code-reviewer.md`。apply instruction 現在要求 controller 在每次 implementer dispatch 載入 TDD。
+- `executing-plans`(v6.4 重建)會載入 TDD 與一次 final code review。它仍沒有每個 task 一個 fresh subagent,也沒有 per-task review。本 schema 仍不選它。先前「SKILL.md 沒寫 TDD 與 code review」在 v5.1.0 為真,在 v7.0.2 為假。
+- `writing-plans` 預設仍寫到 `docs/superpowers/plans/`。一個 task 是一輪測試加上一次 review gate,不是 2–5 分鐘 micro-step。plan 模板現在含 v7 header(Spec、Global Constraints、Review Focus),並把 executor 鎖在 subagent-driven-development。
+- `using-git-worktrees` 預設仍是專案內 `.worktrees/`,並改為優先用原生 worktree 工具,建立前會先問。
+- `finishing-a-development-branch` 預設選單不再提供 Discard(v6.2),也不寫死 `gh pr create`。
+
+**OpenSpec 2.2.0(2026-11-24)加了 `/openspec` router。** 相對 2.1.1,skill 樹只多了 `skills/openspec/`。十二個 workflow skill 沒改。router 是補充:它把請求交給 `openspec-explore`、`openspec-propose`、`openspec-new-change`、`openspec-continue-change`、`openspec-ff-change`、`openspec-update-change`、`openspec-apply-change`、`openspec-verify-change`、`openspec-sync-specs`、`openspec-archive-change`、`openspec-bulk-archive-change` 或 `openspec-onboard`。它不選自訂 schema。本 schema 的 `schema.yaml` 格式沒變。請求怎麼進到 `superpowers-bridge`,見「使用方式」。
+
+進行中的 v1 change 不需要 schema-graph migration。請重新複製 bundle,讓 instruction 與 template 吃到上述修正,並使用 OpenSpec ≥ 2.0,README 裡的 skill 名稱才存在。
 
 採用者:版本 pin 在表中之上即可。要查自己專案的 runtime 現況,跑 `openspec list` + `openspec schemas` + `claude plugin list`。
 
@@ -529,7 +579,7 @@ apply 要求 `plan` 而非 `tasks`,因為 executor 需要 micro-step 才能有�
 若 Superpowers skill 不可用:
 
 - **`brainstorm` / `plan` artifact**:使用者可明確 opt-in 改成手動撰寫(PRECHECK 會 STOP 並通知;手動模式需要使用者明確選擇,不會靜默降級)
-- **`apply` phase**:本 schema 沒有 manual fallback。Step 0 PRECHECK 缺任何必要 skill 就 STOP,建議改用 OpenSpec 內建的 `spec-driven` schema 跑那個 change。理由見上面「設計觸點 #4」—— `executing-plans` 不會 transitively 觸發 TDD 與 code-review,降級的 apply 等於違背 schema 的目的
+- **`apply` phase**:本 schema 沒有 manual fallback。Step 0 PRECHECK 缺任何必要 skill 就 STOP,建議改用 OpenSpec 內建的 `spec-driven` schema 跑那個 change。理由見上面「設計觸點 #4」—— 本 schema 選的是 per-task subagent,`executing-plans` 是 inline executor。
 
 ---
 
